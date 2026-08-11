@@ -326,7 +326,7 @@ struct PomoView: View {
         let font = Font.system(size: layout.type.countdown, weight: .bold, design: .rounded)
             .monospacedDigit()
         let template = DurationEditorLayout.resolve(draft: draftWorkMinutes).minuteTemplate
-        return HStack(spacing: 0) {
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
             Text(template)
                 .font(font)
                 .hidden()
