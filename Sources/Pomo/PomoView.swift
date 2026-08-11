@@ -290,18 +290,24 @@ struct PomoView: View {
                 Text(":00")
                     .font(font)
                     .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
+                    .fixedSize()
                     .accessibilityLabel("0秒")
             }
-            .frame(width: layout.countdownW, alignment: .leading)
+            .frame(width: durationEditorWidth, alignment: .leading)
             Spacer(minLength: layout.spacing.gapSection)
             controlButton(.start, symbol: "play.fill", label: "集中を開始", action: startDraftSession)
         }
     }
 
     private var durationInputWidth: CGFloat {
-        let digits = min(3, max(2, draftWorkMinutes.count))
-        return CGFloat(digits) * layout.countdownDigitW
+        CGFloat(durationInputDigits) * layout.countdownDigitW
     }
+
+    private var durationEditorWidth: CGFloat {
+        PillLayout(sizeClass: sizeController.current, minuteDigits: durationInputDigits).countdownW
+    }
+
+    private var durationInputDigits: Int { min(3, max(2, draftWorkMinutes.count)) }
 
     // MARK: - Row1 header
     //
