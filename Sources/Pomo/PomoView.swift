@@ -51,6 +51,16 @@ struct DurationEditorLayout: Equatable {
     }
 }
 
+struct HoverScaleFactors: Equatable {
+    let glass: CGFloat
+    let content: CGFloat
+
+    static func resolve(isHovering: Bool, hoverScale: CGFloat) -> Self {
+        let glass = isHovering ? hoverScale : 1
+        return HoverScaleFactors(glass: glass, content: 1)
+    }
+}
+
 struct PomoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var model: PomodoroSource
@@ -128,8 +138,10 @@ struct PomoView: View {
     /// {sizeClass, minuteDigits}. The only pill-size source there is.
     private var pillSize: NSSize { layout.pillSize }
 
-    /// Hover lift for the pill's contents.
-    private var hoverScale: CGFloat { isHovering ? tuning.hoverScale : 1.0 }
+    /// Hover grows only the glass. Text and controls stay screen-stable.
+    private var hoverScales: HoverScaleFactors {
+        HoverScaleFactors.resolve(isHovering: isHovering, hoverScale: tuning.hoverScale)
+    }
     private var isEditingSetup: Bool { displayState == .idle && isHovering }
 
     var body: some View {
@@ -154,13 +166,16 @@ struct PomoView: View {
             // outside SwiftUI, and unclipped, or the live `.behindWindow`
             // blur freezes.
             overtimeGlow
+                .scaleEffect(hoverScales.glass)
             contentStack
+                .scaleEffect(hoverScales.content)
             glassHighlight
+                .scaleEffect(hoverScales.glass)
         }
         .frame(width: pillSize.width, height: pillSize.height)
-        // Hover lift × the START/COMPLETE pulse — multiplicative so neither
-        // overrides the other.
-        .scaleEffect(pulse * hoverScale)
+        // START/COMPLETE pulses still move the whole SwiftUI pill. Hover grows
+        // only the glass layers above; keeping content at 1 prevents text drift.
+        .scaleEffect(pulse)
         .animation(Motion.hoverPill, value: isHovering)
         .onHover(perform: handlePillHover)
         .onAppear {

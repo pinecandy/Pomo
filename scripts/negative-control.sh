@@ -168,6 +168,12 @@ mutate "one-digit editing lets the colon jump into a one-slot position" \
     'let slots = min(3, max(1, draft.count))' \
     "durationEditorLayout_withZeroOrOneCharacter"
 
+mutate "hover scales text and moves the colon again" \
+    Sources/Pomo/PomoView.swift \
+    'return HoverScaleFactors(glass: glass, content: 1)' \
+    'return HoverScaleFactors(glass: glass, content: glass)' \
+    "hoverScaleFactors_expandsOnlyGlass"
+
 mutate "work deadline incorrectly ends the phase instead of entering overtime" \
     Sources/Pomo/PomodoroSource.swift \
     'if remaining == 1 { return .workDeadline }' \

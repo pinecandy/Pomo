@@ -4,6 +4,14 @@ import XCTest
 @testable import Pomo
 
 final class PomoViewMotionTests: XCTestCase {
+    func test_hoverScaleFactors_expandsOnlyGlassAndKeepsContentFixed() {
+        let idle = HoverScaleFactors.resolve(isHovering: false, hoverScale: 1.03)
+        let hovering = HoverScaleFactors.resolve(isHovering: true, hoverScale: 1.03)
+
+        XCTAssertEqual(idle, HoverScaleFactors(glass: 1, content: 1))
+        XCTAssertEqual(hovering, HoverScaleFactors(glass: 1.03, content: 1))
+    }
+
     func test_durationEditorLayout_withZeroOrOneCharacter_reservesTwoMinuteSlots() {
         XCTAssertEqual(
             DurationEditorLayout.resolve(draft: "").minuteTemplate,

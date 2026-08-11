@@ -11,7 +11,7 @@ import SwiftUI
 /// only editor.
 ///
 /// Readers:
-///   - `hoverScale`   → PomoView (contents) + TimerInstanceController (glass)
+///   - `hoverScale`   → PomoView (glass layers) + TimerInstanceController (glass)
 ///   - `glassOpacity` → TimerInstanceController (the VEV's alphaValue)
 final class TuningStore: ObservableObject {
     static let shared = TuningStore()
@@ -26,8 +26,8 @@ final class TuningStore: ObservableObject {
         static let glassOpacity: CGFloat = 0.8
     }
 
-    /// Pill growth factor while hovered. Applied to the SwiftUI contents and,
-    /// in sync, to the AppKit glass — see `TimerInstanceController`.
+    /// Glass growth factor while hovered. Applied to the SwiftUI glass layers
+    /// and the AppKit glass — see `TimerInstanceController`.
     @Published var hoverScale: CGFloat { didSet { persist("hoverScale", hoverScale) } }
     /// VEV alpha (0.3–1.0). Lower = more see-through / glassier.
     @Published var glassOpacity: CGFloat { didSet { persist("glassOpacity", glassOpacity) } }

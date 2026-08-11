@@ -2,13 +2,11 @@ import Combine
 
 /// Hover-state bridge: SwiftUI (`PomoView`) publishes the pill-hover flag,
 /// AppKit (`TimerInstanceController`) subscribes so it can scale that timer's
-/// NSVisualEffectView glass IN SYNC with the SwiftUI `hoverScale` on the
-/// contents.
+/// NSVisualEffectView glass in sync with the SwiftUI reflection and glow.
 ///
 /// The bridge exists because the VEV has to live outside SwiftUI to keep the
-/// live `.behindWindow` blur unfrozen. A `.scaleEffect` in SwiftUI therefore
-/// only grows the text and icons — the glass underneath would stay put. This
-/// flag is the wire that lets it grow with them.
+/// live `.behindWindow` blur unfrozen. This flag keeps the AppKit glass aligned
+/// with the SwiftUI glass layers while text and controls remain screen-stable.
 ///
 /// Owned per-controller, never app-wide: `TimerInstanceController` creates one
 /// and injects it into its own `PomoView`.
