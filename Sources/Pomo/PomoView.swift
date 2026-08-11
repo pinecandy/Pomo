@@ -15,6 +15,7 @@ private enum Motion {
     static let gauge     = Animation.linear(duration: 1.0)
     static let hoverPill = Animation.spring(response: 0.32, dampingFraction: 0.72)
     static let overtime  = Animation.easeInOut(duration: 0.7)
+    static let taskSlot  = Animation.spring(response: 0.34, dampingFraction: 0.86)
 
     /// Peak scale and hold time for each pulse — kept beside their curves so
     /// the two numbers that must stay in step sit adjacent.
@@ -27,6 +28,17 @@ private enum Motion {
         /// `TuningStore.Default.hoverScale` by coincidence — unrelated
         /// quantities, do not collapse them.
         static let forcedScale: CGFloat = 1.03
+    }
+}
+
+struct TaskSlotOffsets: Equatable {
+    let display: CGFloat
+    let editor: CGFloat
+
+    static func resolve(isEditing: Bool, distance: CGFloat, reduceMotion: Bool) -> Self {
+        guard !reduceMotion else { return TaskSlotOffsets(display: 0, editor: 0) }
+        if isEditing { return TaskSlotOffsets(display: -distance, editor: 0) }
+        return TaskSlotOffsets(display: 0, editor: distance)
     }
 }
 
@@ -109,6 +121,7 @@ struct PomoView: View {
 
     /// Hover lift for the pill's contents.
     private var hoverScale: CGFloat { isHovering ? tuning.hoverScale : 1.0 }
+    private var isEditingSetup: Bool { displayState == .idle && isHovering }
 
     var body: some View {
         ZStack {
@@ -216,20 +229,17 @@ struct PomoView: View {
     /// Two fixed rows, top to bottom:
     ///   row1 header: [timer icon + task name] …spacer… [Today]
     ///   row2:        [countdown mm:ss] [segmented gauge]
-    @ViewBuilder
     private var contentStack: some View {
-        if displayState == .idle, isHovering {
-            setupEditor
-        } else {
-            regularContent
-        }
-    }
-
-    private var regularContent: some View {
         VStack(spacing: layout.spacing.gapRow) {
             headerRow
                 .frame(height: layout.spacing.ctrlHit)
-            bottomRow
+            Group {
+                if isEditingSetup {
+                    durationEditor
+                } else {
+                    bottomRow
+                }
+            }
                 .frame(width: layout.contentW, height: layout.row2H)
         }
         // Symmetric horizontal inset (insetH = insetOuter + gapTextTrailing)
@@ -238,24 +248,20 @@ struct PomoView: View {
         .padding(.horizontal, layout.insetH)
         .padding(.vertical, layout.spacing.insetV)
         .frame(width: glassW, height: glassH)
+        .background(setupTabBridge)
     }
 
-    private var setupEditor: some View {
-        VStack(spacing: layout.spacing.gapRow) {
-            taskEditor
-                .frame(height: layout.spacing.ctrlHit)
-            durationEditor
-                .frame(width: layout.contentW, height: layout.row2H)
+    @ViewBuilder
+    private var setupTabBridge: some View {
+        if isEditingSetup {
+            SetupTabBridge(onTab: handleSetupTab)
         }
-        .padding(.horizontal, layout.insetH)
-        .padding(.vertical, layout.spacing.insetV)
-        .frame(width: glassW, height: glassH)
-        .background(SetupTabBridge(onTab: handleSetupTab))
     }
 
     private var taskEditor: some View {
         HStack(spacing: layout.spacing.gapInline) {
             Image(systemName: "timer")
+                .frame(width: layout.headerIconW)
                 .foregroundStyle(journeyBright)
             TextField("Task", text: $model.currentTask)
                 .textFieldStyle(.plain)
@@ -267,20 +273,26 @@ struct PomoView: View {
     }
 
     private var durationEditor: some View {
-        HStack(spacing: layout.spacing.gapInline) {
-            TextField("25", text: $draftWorkMinutes)
-                .textFieldStyle(.plain)
-                .font(.system(size: layout.type.countdown, weight: .bold, design: .rounded))
-                .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
-                .frame(width: durationInputWidth, alignment: .leading)
-                .focused($setupField, equals: .minutes)
-                .onSubmit(startDraftSession)
-                .onChange(of: draftWorkMinutes) { _ in minuteInputInvalid = false }
-                .accessibilityLabel("集中時間、分")
-                .accessibilityHint("1分から180分までの整数")
-            Text("min")
-                .font(.system(size: layout.type.caption, weight: .medium))
-                .foregroundStyle(.white.opacity(Tokens.Decor.opacityCaptionDim))
+        let font = Font.system(size: layout.type.countdown, weight: .bold, design: .rounded)
+            .monospacedDigit()
+        return HStack(spacing: 0) {
+            HStack(spacing: 0) {
+                TextField("25", text: $draftWorkMinutes)
+                    .textFieldStyle(.plain)
+                    .font(font)
+                    .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
+                    .frame(width: durationInputWidth, alignment: .leading)
+                    .focused($setupField, equals: .minutes)
+                    .onSubmit(startDraftSession)
+                    .onChange(of: draftWorkMinutes) { _ in minuteInputInvalid = false }
+                    .accessibilityLabel("集中時間、分")
+                    .accessibilityHint("1分から180分までの整数。秒は0秒固定")
+                Text(":00")
+                    .font(font)
+                    .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
+                    .accessibilityLabel("0秒")
+            }
+            .frame(width: layout.countdownW, alignment: .leading)
             Spacer(minLength: layout.spacing.gapSection)
             controlButton(.start, symbol: "play.fill", label: "集中を開始", action: startDraftSession)
         }
@@ -296,11 +308,34 @@ struct PomoView: View {
     // [timer icon + task name] …spacer(min gap.section)… [Today]
 
     private var headerRow: some View {
-        HStack(spacing: 0) {
-            taskChip
-            Spacer(minLength: layout.spacing.gapSection)
+        HStack(spacing: layout.spacing.gapSection) {
+            taskSlot
+                .frame(maxWidth: .infinity, alignment: .leading)
             todayReadout
         }
+    }
+
+    private var taskSlot: some View {
+        let offsets = TaskSlotOffsets.resolve(
+            isEditing: isEditingSetup,
+            distance: layout.spacing.ctrlHit,
+            reduceMotion: reduceMotion
+        )
+        return ZStack(alignment: .leading) {
+            taskChip
+                .offset(y: offsets.display)
+                .opacity(isEditingSetup ? 0 : 1)
+                .allowsHitTesting(!isEditingSetup)
+                .accessibilityHidden(isEditingSetup)
+            taskEditor
+                .offset(y: offsets.editor)
+                .opacity(isEditingSetup ? 1 : 0)
+                .allowsHitTesting(isEditingSetup)
+                .accessibilityHidden(!isEditingSetup)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .clipped()
+        .animation(reduceMotion ? Motion.hover : Motion.taskSlot, value: isEditingSetup)
     }
 
     /// Compact task label. Editing happens inline while idle and hovering.

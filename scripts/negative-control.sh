@@ -156,6 +156,12 @@ mutate "minuteDigits threshold off-by-one (>= 100 becomes > 100)" \
     'minutes > 100 ? 3 : 2' \
     "inuteDigits"
 
+mutate "hover task slot sends the title down instead of up" \
+    Sources/Pomo/PomoView.swift \
+    'if isEditing { return TaskSlotOffsets(display: -distance, editor: 0) }' \
+    'if isEditing { return TaskSlotOffsets(display: distance, editor: 0) }' \
+    "taskSlotOffsets_whenEditing"
+
 mutate "work deadline incorrectly ends the phase instead of entering overtime" \
     Sources/Pomo/PomodoroSource.swift \
     'if remaining == 1 { return .workDeadline }' \
