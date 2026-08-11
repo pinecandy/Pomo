@@ -1,5 +1,9 @@
 # Pomo
 
+<p align="center">
+  <img src="Assets/PomoIcon.png" alt="Pomo app icon" width="144">
+</p>
+
 時間を区切り、だらだら続く作業に「終わり」をつくるmacOS用フォーカスタイマーです。
 
 <p align="center">

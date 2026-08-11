@@ -22,6 +22,29 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 BUNDLES=("$HOME/Pomo/Pomo.app" "/Applications/Pomo.app")
+ICON="Assets/PomoIcon.icns"
+ICON_NAME="PomoIcon.icns"
+
+[ -f "$ICON" ] || { echo "no app icon at $ICON"; exit 1; }
+
+install_icon() {
+    local bundle="$1"
+    local plist="$bundle/Contents/Info.plist"
+    local resources="$bundle/Contents/Resources"
+
+    [ -f "$plist" ] || { echo "FAILED: no Info.plist"; return 1; }
+    mkdir -p "$resources" || { echo "FAILED to create Resources"; return 1; }
+    cp "$ICON" "$resources/$ICON_NAME.new" || { echo "FAILED to stage icon"; return 1; }
+    mv -f "$resources/$ICON_NAME.new" "$resources/$ICON_NAME" || {
+        echo "FAILED to swap in icon"
+        return 1
+    }
+    if /usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" "$plist" >/dev/null 2>&1; then
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile $ICON_NAME" "$plist"
+    else
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string $ICON_NAME" "$plist"
+    fi
+}
 
 echo "=== gates ==="
 if ! ./scripts/check.sh >/tmp/pomo-deploy-check.log 2>&1; then
@@ -51,6 +74,7 @@ for bundle in "${BUNDLES[@]}"; do
         echo "SKIP: bundle does not exist"
         continue
     fi
+    install_icon "$bundle" || exit 1
     cp "$BINARY" "$dest.new" || { echo "FAILED to stage"; exit 1; }
     mv -f "$dest.new" "$dest" || { echo "FAILED to swap in"; exit 1; }
     codesign --force -s - "$bundle" 2>&1 | sed 's/^/  /'
@@ -64,5 +88,7 @@ for bundle in "${BUNDLES[@]}"; do
     [ -d "$bundle" ] || continue
     printf '  %-28s %s\n' "$(basename "$(dirname "$(dirname "$bundle")")")/$(basename "$bundle")" \
         "$(shasum "$bundle/Contents/MacOS/Pomo" | cut -d' ' -f1)"
+    printf '  %-28s %s\n' "$(basename "$bundle") icon" \
+        "$(shasum "$bundle/Contents/Resources/$ICON_NAME" | cut -d' ' -f1)"
 done
 echo "  source                       $(shasum "$BINARY" | cut -d' ' -f1)"
