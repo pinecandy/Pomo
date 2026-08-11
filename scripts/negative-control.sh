@@ -162,6 +162,12 @@ mutate "hover task slot sends the title down instead of up" \
     'if isEditing { return TaskSlotOffsets(display: distance, editor: 0) }' \
     "taskSlotOffsets_whenEditing"
 
+mutate "one-digit editing lets the colon jump into a one-slot position" \
+    Sources/Pomo/PomoView.swift \
+    'let slots = min(3, max(2, draft.count))' \
+    'let slots = min(3, max(1, draft.count))' \
+    "durationEditorLayout_withZeroOrOneCharacter"
+
 mutate "work deadline incorrectly ends the phase instead of entering overtime" \
     Sources/Pomo/PomodoroSource.swift \
     'if remaining == 1 { return .workDeadline }' \

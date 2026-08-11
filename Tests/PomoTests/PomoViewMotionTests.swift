@@ -4,6 +4,23 @@ import XCTest
 @testable import Pomo
 
 final class PomoViewMotionTests: XCTestCase {
+    func test_durationEditorLayout_withZeroOrOneCharacter_reservesTwoMinuteSlots() {
+        XCTAssertEqual(
+            DurationEditorLayout.resolve(draft: "").minuteTemplate,
+            "00"
+        )
+        XCTAssertEqual(
+            DurationEditorLayout.resolve(draft: "5").minuteTemplate,
+            "00"
+        )
+    }
+
+    func test_durationEditorLayout_withTwoOrMoreCharacters_capsAtThreeMinuteSlots() {
+        XCTAssertEqual(DurationEditorLayout.resolve(draft: "45").minuteTemplate, "00")
+        XCTAssertEqual(DurationEditorLayout.resolve(draft: "180").minuteTemplate, "000")
+        XCTAssertEqual(DurationEditorLayout.resolve(draft: "9999").minuteTemplate, "000")
+    }
+
     func test_taskSlotOffsets_whenIdle_keepsTitleAndStagesEditorBelow() {
         let offsets = TaskSlotOffsets.resolve(isEditing: false, distance: 24, reduceMotion: false)
 

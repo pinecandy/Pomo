@@ -42,6 +42,15 @@ struct TaskSlotOffsets: Equatable {
     }
 }
 
+struct DurationEditorLayout: Equatable {
+    let minuteTemplate: String
+
+    static func resolve(draft: String) -> Self {
+        let slots = min(3, max(2, draft.count))
+        return DurationEditorLayout(minuteTemplate: String(repeating: "0", count: slots))
+    }
+}
+
 struct PomoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var model: PomodoroSource
@@ -270,44 +279,57 @@ struct PomoView: View {
                 .accessibilityLabel("タスク名")
         }
         .font(.system(size: layout.type.header, weight: .semibold))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(editorBackground)
     }
 
     private var durationEditor: some View {
-        let font = Font.system(size: layout.type.countdown, weight: .bold, design: .rounded)
-            .monospacedDigit()
         return HStack(spacing: 0) {
-            HStack(spacing: 0) {
-                TextField("25", text: $draftWorkMinutes)
-                    .textFieldStyle(.plain)
-                    .font(font)
-                    .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
-                    .frame(width: durationInputWidth, alignment: .leading)
-                    .focused($setupField, equals: .minutes)
-                    .onSubmit(startDraftSession)
-                    .onChange(of: draftWorkMinutes) { _ in minuteInputInvalid = false }
-                    .accessibilityLabel("集中時間、分")
-                    .accessibilityHint("1分から180分までの整数。秒は0秒固定")
-                Text(":00")
-                    .font(font)
-                    .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
-                    .fixedSize()
-                    .accessibilityLabel("0秒")
-            }
-            .frame(width: durationEditorWidth, alignment: .leading)
+            durationInput
             Spacer(minLength: layout.spacing.gapSection)
             controlButton(.start, symbol: "play.fill", label: "集中を開始", action: startDraftSession)
         }
     }
 
-    private var durationInputWidth: CGFloat {
-        CGFloat(durationInputDigits) * layout.countdownDigitW
+    private var durationInput: some View {
+        let font = Font.system(size: layout.type.countdown, weight: .bold, design: .rounded)
+            .monospacedDigit()
+        let template = DurationEditorLayout.resolve(draft: draftWorkMinutes).minuteTemplate
+        return HStack(spacing: 0) {
+            Text(template)
+                .font(font)
+                .hidden()
+                .overlay(alignment: .leading) {
+                    TextField("25", text: $draftWorkMinutes)
+                        .textFieldStyle(.plain)
+                        .font(font)
+                        .multilineTextAlignment(.trailing)
+                        .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .focused($setupField, equals: .minutes)
+                        .onSubmit(startDraftSession)
+                        .onChange(of: draftWorkMinutes) { _ in minuteInputInvalid = false }
+                        .accessibilityLabel("集中時間、分")
+                        .accessibilityHint("1分から180分までの整数。秒は0秒固定")
+                }
+            Text(":00")
+                .font(font)
+                .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
+                .fixedSize()
+                .accessibilityLabel("0秒")
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .frame(height: ctrlHit)
+        .background(editorBackground)
     }
 
-    private var durationEditorWidth: CGFloat {
-        PillLayout(sizeClass: sizeController.current, minuteDigits: durationInputDigits).countdownW
+    private var editorBackground: some View {
+        RoundedRectangle(
+            cornerRadius: ctrlHit * Tokens.Decor.cornerFactor,
+            style: .continuous
+        )
+        .fill(Color.white.opacity(Tokens.Decor.editorFillOpacity))
     }
-
-    private var durationInputDigits: Int { min(3, max(2, draftWorkMinutes.count)) }
 
     // MARK: - Row1 header
     //

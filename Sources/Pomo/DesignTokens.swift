@@ -133,6 +133,8 @@ enum Tokens {
         static let ctrlScaleHovered: CGFloat      = 1.10
         /// Opacity of the header's task-name + timer-icon chip.
         static let opacityHeaderChip: Double      = 0.95
+        /// Local fill behind the two inline fields while idle editing is active.
+        static let editorFillOpacity: Double      = 0.12
 
         // MARK: Glass top reflection
         static let glassHighlightLineWidth: CGFloat = 1
