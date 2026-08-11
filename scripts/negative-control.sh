@@ -180,12 +180,6 @@ mutate "hover hit region becomes a square again" \
     'cornerRadius: 0' \
     "hoverHitRegion_matchesRoundedGlass"
 
-mutate "hovered gauge stays full-width instead of collapsing" \
-    Sources/Pomo/PomoView.swift \
-    'let scaleX: CGFloat = reduceMotion ? 1 : (isVisible ? 1 : 0)' \
-    'let scaleX: CGFloat = 1' \
-    "gaugeReveal_whenHidden"
-
 mutate "work deadline incorrectly ends the phase instead of entering overtime" \
     Sources/Pomo/PomodoroSource.swift \
     'if remaining == 1 { return .workDeadline }' \

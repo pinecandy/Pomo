@@ -310,7 +310,7 @@ struct PillLayout {
 
     // MARK: 1.4 Derivation — 2 rows: header / bottom
     //
-    // row1 header, row2 = [segmented gauge] [gap.gauge] [countdown (right)].
+    // row1 header, row2 = [countdown (left)] [gap.gauge] [segmented gauge].
 
     /// Countdown digit metrics. The 0.72/0.34 ratios carry a deliberate
     /// safety margin over the font's measured glyph widths: `countdownReadout`
