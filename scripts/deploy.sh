@@ -24,10 +24,23 @@ cd "$(dirname "$0")/.."
 BUNDLES=("$HOME/Pomo/Pomo.app" "/Applications/Pomo.app")
 ICON="Assets/PomoIcon.icns"
 ICON_NAME="PomoIcon.icns"
+APP_COPYRIGHT="Copyright © 2026 pinecandy."
 
 [ -f "$ICON" ] || { echo "no app icon at $ICON"; exit 1; }
 
-install_icon() {
+set_plist_string() {
+    local plist="$1"
+    local key="$2"
+    local value="$3"
+
+    if /usr/libexec/PlistBuddy -c "Print :$key" "$plist" >/dev/null 2>&1; then
+        /usr/libexec/PlistBuddy -c "Set :$key $value" "$plist"
+    else
+        /usr/libexec/PlistBuddy -c "Add :$key string $value" "$plist"
+    fi
+}
+
+install_branding() {
     local bundle="$1"
     local plist="$bundle/Contents/Info.plist"
     local resources="$bundle/Contents/Resources"
@@ -39,11 +52,8 @@ install_icon() {
         echo "FAILED to swap in icon"
         return 1
     }
-    if /usr/libexec/PlistBuddy -c "Print :CFBundleIconFile" "$plist" >/dev/null 2>&1; then
-        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile $ICON_NAME" "$plist"
-    else
-        /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string $ICON_NAME" "$plist"
-    fi
+    set_plist_string "$plist" CFBundleIconFile "$ICON_NAME" || return 1
+    set_plist_string "$plist" NSHumanReadableCopyright "$APP_COPYRIGHT" || return 1
 }
 
 echo "=== gates ==="
@@ -74,7 +84,7 @@ for bundle in "${BUNDLES[@]}"; do
         echo "SKIP: bundle does not exist"
         continue
     fi
-    install_icon "$bundle" || exit 1
+    install_branding "$bundle" || exit 1
     cp "$BINARY" "$dest.new" || { echo "FAILED to stage"; exit 1; }
     mv -f "$dest.new" "$dest" || { echo "FAILED to swap in"; exit 1; }
     codesign --force -s - "$bundle" 2>&1 | sed 's/^/  /'

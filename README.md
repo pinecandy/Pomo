@@ -82,4 +82,4 @@ swift run Pomo
 
 ## ライセンス
 
-現在はライセンス未設定です。コードの利用・改変・再配布条件は、ライセンスを追加するまで明示的に許諾していません。
+[MIT License](LICENSE)で公開しています。著作権者は`Copyright (c) 2026 pinecandy`です。
