@@ -73,6 +73,16 @@ struct HoverHitRegion: Equatable {
     }
 }
 
+struct GaugeReveal: Equatable {
+    let scaleX: CGFloat
+    let opacity: Double
+
+    static func resolve(isVisible: Bool, reduceMotion: Bool) -> Self {
+        let scaleX: CGFloat = reduceMotion ? 1 : (isVisible ? 1 : 0)
+        return GaugeReveal(scaleX: scaleX, opacity: isVisible ? 1 : 0)
+    }
+}
+
 struct PomoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var model: PomodoroSource
@@ -126,7 +136,7 @@ struct PomoView: View {
     // {sizeClass, minuteDigits}. Every geometry value below reads through it
     // — no independent width/height/padding literals live here.
     //   row1: [timer icon + task name] —(FILL, min gap.section)— [Today]
-    //   row2: [countdown mm:ss] —gap.gauge— [segmented gauge]
+    //   row2: [segmented gauge / controls] —gap.gauge— [countdown mm:ss]
     //   insetH (= inset.outer + gap.textTrailing) left/right, inset.v top/bottom
 
     private var layout: PillLayout {
@@ -264,18 +274,12 @@ struct PomoView: View {
 
     /// Two fixed rows, top to bottom:
     ///   row1 header: [timer icon + task name] …spacer… [Today]
-    ///   row2:        [countdown mm:ss] [segmented gauge]
+    ///   row2:        [segmented gauge / controls] [countdown mm:ss]
     private var contentStack: some View {
         VStack(spacing: layout.spacing.gapRow) {
             headerRow
                 .frame(height: layout.spacing.ctrlHit)
-            Group {
-                if isEditingSetup {
-                    durationEditor
-                } else {
-                    bottomRow
-                }
-            }
+            bottomRow
                 .frame(width: layout.contentW, height: layout.row2H)
         }
         // Symmetric horizontal inset (insetH = insetOuter + gapTextTrailing)
@@ -314,19 +318,11 @@ struct PomoView: View {
         .background(editorBackground)
     }
 
-    private var durationEditor: some View {
-        return HStack(spacing: 0) {
-            durationInput
-            Spacer(minLength: layout.spacing.gapSection)
-            controlButton(.start, symbol: "play.fill", label: "集中を開始", action: startDraftSession)
-        }
-    }
-
     private var durationInput: some View {
         let font = Font.system(size: layout.type.countdown, weight: .bold, design: .rounded)
             .monospacedDigit()
         let template = DurationEditorLayout.resolve(draft: draftWorkMinutes).minuteTemplate
-        return HStack(spacing: 0) {
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
             Text(template)
                 .font(font)
                 .hidden()
@@ -443,21 +439,50 @@ struct PomoView: View {
         }
     }
 
-    // MARK: - Row2: countdown + gauge side by side
+    // MARK: - Row2: gauge / controls + countdown side by side
     //
-    // [countdown mm:ss (left, fixed width)] —gap.gauge— [gauge (right)],
-    // vertically centered (HStack's default cross-axis alignment).
+    // [gauge / controls (left, fixed width)] —gap.gauge—
+    // [countdown mm:ss (right, fixed width)].
     private var bottomRow: some View {
         HStack(spacing: layout.spacing.gapGauge) {
-            countdownReadout
-            if isHovering, displayState != .idle {
-                Spacer(minLength: layout.spacing.gapGauge)
+            gaugeControlSlot
+            countdownSlot
+        }
+    }
+
+    private var gaugeControlSlot: some View {
+        let reveal = GaugeReveal.resolve(isVisible: !isHovering, reduceMotion: reduceMotion)
+        return ZStack(alignment: .leading) {
+            segmentedBar
+                .scaleEffect(x: reveal.scaleX, y: 1, anchor: .leading)
+                .opacity(reveal.opacity)
+                .animation(Motion.hover, value: reveal)
+            if isEditingSetup {
+                controlButton(.start,
+                              symbol: "play.fill",
+                              label: "集中を開始",
+                              action: startDraftSession)
+                    .transition(.opacity)
+            } else if isHovering {
                 runtimeControls
-            } else {
-                segmentedBar
-                    .frame(width: layout.barRowW, height: layout.segRowH)
+                    .transition(.opacity)
             }
         }
+        .frame(width: layout.barRowW, height: layout.segRowH, alignment: .leading)
+    }
+
+    private var countdownSlot: some View {
+        ZStack(alignment: .leading) {
+            countdownReadout
+                .opacity(isEditingSetup ? 0 : 1)
+                .accessibilityHidden(isEditingSetup)
+            if isEditingSetup {
+                durationInput
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: layout.countdownW, height: layout.row2H, alignment: .leading)
+        .animation(Motion.hover, value: isEditingSetup)
     }
 
     private var runtimeControls: some View {
@@ -731,6 +756,7 @@ struct PomoView: View {
         minuteInputInvalid = false
         model.workMinutes = minutes
         setupField = nil
+        applyHoverState(false)
         model.start()
     }
 

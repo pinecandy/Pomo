@@ -28,6 +28,27 @@ final class PomoViewMotionTests: XCTestCase {
         XCTAssertEqual(hovering, HoverScaleFactors(glass: 1.03, content: 1))
     }
 
+    func test_gaugeReveal_whenVisible_usesFullWidthAndOpacity() {
+        XCTAssertEqual(
+            GaugeReveal.resolve(isVisible: true, reduceMotion: false),
+            GaugeReveal(scaleX: 1, opacity: 1)
+        )
+    }
+
+    func test_gaugeReveal_whenHidden_collapsesWidthAndOpacity() {
+        XCTAssertEqual(
+            GaugeReveal.resolve(isVisible: false, reduceMotion: false),
+            GaugeReveal(scaleX: 0, opacity: 0)
+        )
+    }
+
+    func test_gaugeReveal_withReduceMotion_fadesWithoutHorizontalCollapse() {
+        XCTAssertEqual(
+            GaugeReveal.resolve(isVisible: false, reduceMotion: true),
+            GaugeReveal(scaleX: 1, opacity: 0)
+        )
+    }
+
     func test_durationEditorLayout_withZeroOrOneCharacter_reservesTwoMinuteSlots() {
         XCTAssertEqual(
             DurationEditorLayout.resolve(draft: "").minuteTemplate,
