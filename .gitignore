@@ -1,0 +1,7 @@
+# SwiftPM build products
+.build/
+
+# Ad-hoc signed app bundle produced by the deploy step (rebuilt from source)
+Pomo.app/
+
+.DS_Store

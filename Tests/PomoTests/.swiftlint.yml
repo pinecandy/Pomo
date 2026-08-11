@@ -1,0 +1,67 @@
+# Scoped rule exception for the test target only.
+#
+# Required metadata (code-structure.md, "Enforcement and exceptions"):
+#   rule:         implicitly_unwrapped_optional, force_unwrapping
+#   scope:        Tests/PomoTests only — Sources/ keeps both at ERROR
+#   measured:     2 violations, both in TodayTotalStoreTests.swift
+#   reason:       XCTestCase creates its fixtures in setUp(), after the
+#                 property has been declared, so a non-optional stored
+#                 property is impossible and `var x: T!` is the idiomatic
+#                 spelling. Making them true Optionals cascaded to 92 compile
+#                 errors across the file with no gain in safety: a nil fixture
+#                 fails the test either way, and setUp already asserts on it.
+#   owner:        pinecandy
+#   removal:      drop this file if the suite stops needing setUp-created
+#                 fixtures, or if a future SwiftLint gains an
+#                 "allow in test targets" mode for these rules.
+#
+# Everything else the root config enforces still applies here — in particular
+# the 60-line / complexity-20 / 6-parameter thresholds, which tests are NOT
+# exempt from.
+
+only_rules:
+  - function_body_length
+  - cyclomatic_complexity
+  - function_parameter_count
+  - closure_body_length
+  - nesting
+  - force_cast
+  - force_try
+  - discouraged_optional_boolean
+  - empty_count
+  - implicit_optional_initialization
+  - unused_optional_binding
+  - toggle_bool
+  - unused_closure_parameter
+  - unused_enumerated
+  - duplicate_imports
+  - redundant_nil_coalescing
+  - empty_string
+  - first_where
+  - last_where
+  - contains_over_first_not_nil
+  - sorted_first_last
+
+function_body_length:
+  warning: 60
+  error: 60
+
+cyclomatic_complexity:
+  warning: 20
+  error: 20
+  ignores_case_statements: false
+
+function_parameter_count:
+  warning: 6
+  error: 6
+
+closure_body_length:
+  warning: 60
+  error: 60
+
+nesting:
+  type_level: 3
+  function_level: 3
+
+force_cast: error
+force_try: error
