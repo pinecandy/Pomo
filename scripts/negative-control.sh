@@ -174,6 +174,12 @@ mutate "hover scales text and moves the colon again" \
     'return HoverScaleFactors(glass: glass, content: glass)' \
     "hoverScaleFactors_expandsOnlyGlass"
 
+mutate "hover hit region becomes a square again" \
+    Sources/Pomo/PomoView.swift \
+    'cornerRadius: layout.glassH * Tokens.Decor.cornerFactor' \
+    'cornerRadius: 0' \
+    "hoverHitRegion_matchesRoundedGlass"
+
 mutate "work deadline incorrectly ends the phase instead of entering overtime" \
     Sources/Pomo/PomodoroSource.swift \
     'if remaining == 1 { return .workDeadline }' \

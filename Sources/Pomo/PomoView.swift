@@ -61,6 +61,18 @@ struct HoverScaleFactors: Equatable {
     }
 }
 
+struct HoverHitRegion: Equatable {
+    let size: CGSize
+    let cornerRadius: CGFloat
+
+    static func resolve(layout: PillLayout) -> Self {
+        HoverHitRegion(
+            size: CGSize(width: layout.glassW, height: layout.glassH),
+            cornerRadius: layout.glassH * Tokens.Decor.cornerFactor
+        )
+    }
+}
+
 struct PomoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var model: PomodoroSource
@@ -142,6 +154,7 @@ struct PomoView: View {
     private var hoverScales: HoverScaleFactors {
         HoverScaleFactors.resolve(isHovering: isHovering, hoverScale: tuning.hoverScale)
     }
+    private var hoverHitRegion: HoverHitRegion { HoverHitRegion.resolve(layout: layout) }
     private var isEditingSetup: Bool { displayState == .idle && isHovering }
 
     var body: some View {
@@ -177,7 +190,6 @@ struct PomoView: View {
         // only the glass layers above; keeping content at 1 prevents text drift.
         .scaleEffect(pulse)
         .animation(Motion.hoverPill, value: isHovering)
-        .onHover(perform: handlePillHover)
         .onAppear {
             // Keep the bridge consistent with forced-hover screenshots.
             hoverState.isHovering = isHovering
@@ -271,7 +283,11 @@ struct PomoView: View {
         // the old trailing-only padding applies to both sides (§ decisions.4).
         .padding(.horizontal, layout.insetH)
         .padding(.vertical, layout.spacing.insetV)
-        .frame(width: glassW, height: glassH)
+        .frame(width: hoverHitRegion.size.width, height: hoverHitRegion.size.height)
+        .contentShape(
+            RoundedRectangle(cornerRadius: hoverHitRegion.cornerRadius, style: .circular)
+        )
+        .onHover(perform: handlePillHover)
         .background(setupTabBridge)
     }
 

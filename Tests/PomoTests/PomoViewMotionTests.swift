@@ -4,6 +4,22 @@ import XCTest
 @testable import Pomo
 
 final class PomoViewMotionTests: XCTestCase {
+    func test_hoverHitRegion_matchesRoundedGlassInsteadOfTheLargerPillBounds() {
+        for size in PomoSize.allCases {
+            for digits in 2...3 {
+                let layout = PillLayout(sizeClass: size, minuteDigits: digits)
+                let region = HoverHitRegion.resolve(layout: layout)
+
+                XCTAssertEqual(region.size, CGSize(width: layout.glassW, height: layout.glassH))
+                XCTAssertEqual(region.cornerRadius,
+                               layout.glassH * Tokens.Decor.cornerFactor,
+                               accuracy: 1e-12)
+                XCTAssertLessThan(region.size.width, layout.pillW)
+                XCTAssertLessThan(region.size.height, layout.pillH)
+            }
+        }
+    }
+
     func test_hoverScaleFactors_expandsOnlyGlassAndKeepsContentFixed() {
         let idle = HoverScaleFactors.resolve(isHovering: false, hoverScale: 1.03)
         let hovering = HoverScaleFactors.resolve(isHovering: true, hoverScale: 1.03)
