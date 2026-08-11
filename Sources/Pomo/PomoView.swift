@@ -343,10 +343,14 @@ struct PomoView: View {
                         .accessibilityLabel("集中時間、分")
                         .accessibilityHint("1分から180分までの整数。秒は0秒固定")
                 }
-            Text(":00")
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(":").offset(y: -2)
+                Text("00")
+            }
                 .font(font)
                 .foregroundStyle(minuteInputInvalid ? Color.red : Color.white)
                 .fixedSize()
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("0秒")
         }
         .fixedSize(horizontal: true, vertical: false)
