@@ -8,7 +8,7 @@ import XCTest
 /// on the same rect down to the pixel.
 final class PillLayoutRectTests: XCTestCase {
 
-    /// medium / 2-digit: pill 296 × 98, window 344 × 146. Chosen because both
+    /// medium / 2-digit: pill 310 × 98, window 358 × 146. Chosen because both
     /// pill dimensions are even, so every leftover parity below comes from the
     /// bounds and not from the pill.
     private let layout = PillLayout(sizeClass: .medium, minuteDigits: 2)

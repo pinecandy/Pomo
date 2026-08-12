@@ -321,10 +321,11 @@ struct PillLayout {
     var countdownColonW: CGFloat { type.countdown * 0.34 }
     var countdownH: CGFloat { type.countdown * 1.20 }
 
-    /// `(minuteDigits + 2)` digit slots — minuteDigits for the minutes, +2 for
-    /// the seconds — plus one colon glyph.
+    /// `(minuteDigits + 3)` digit slots — minuteDigits for the minutes, +2 for
+    /// the seconds, +1 for overtime's leading `+` — plus one colon glyph.
+    /// The sign is reserved at rest so crossing the deadline never resizes the pill.
     var countdownW: CGFloat {
-        let slots = CGFloat(minuteDigits + 2)
+        let slots = CGFloat(minuteDigits + 3)
         return Self.ceil2(slots * countdownDigitW + countdownColonW)
     }
 

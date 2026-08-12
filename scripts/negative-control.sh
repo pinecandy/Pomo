@@ -156,6 +156,12 @@ mutate "minuteDigits threshold off-by-one (>= 100 becomes > 100)" \
     'minutes > 100 ? 3 : 2' \
     "inuteDigits"
 
+mutate "countdown width forgets overtime's leading plus sign" \
+    Sources/Pomo/DesignTokens.swift \
+    'let slots = CGFloat(minuteDigits + 3)' \
+    'let slots = CGFloat(minuteDigits + 2)' \
+    "countdownWidth_coversOvertimeSign"
+
 mutate "hover task slot sends the title down instead of up" \
     Sources/Pomo/PomoView.swift \
     'if isEditing { return TaskSlotOffsets(display: -distance, editor: 0) }' \

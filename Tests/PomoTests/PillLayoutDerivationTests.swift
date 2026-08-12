@@ -41,24 +41,24 @@ final class PillLayoutDerivationTests: XCTestCase {
     }
 
     private static let goldenTable: [Golden] = [
-        Golden(size: .small, digits: 2, countdownW: 52, segClusterW: 136,
-               contentW: 198, contentH: 49, glassW: 230, glassH: 74,
-               pillW: 238, pillH: 82, windowW: 286, windowH: 130),
-        Golden(size: .small, digits: 3, countdownW: 64, segClusterW: 136,
+        Golden(size: .small, digits: 2, countdownW: 64, segClusterW: 136,
                contentW: 210, contentH: 49, glassW: 242, glassH: 74,
                pillW: 250, pillH: 82, windowW: 298, windowH: 130),
-        Golden(size: .medium, digits: 2, countdownW: 66, segClusterW: 170,
-               contentW: 248, contentH: 57, glassW: 288, glassH: 90,
-               pillW: 296, pillH: 98, windowW: 344, windowH: 146),
-        Golden(size: .medium, digits: 3, countdownW: 80, segClusterW: 170,
+        Golden(size: .small, digits: 3, countdownW: 76, segClusterW: 136,
+               contentW: 222, contentH: 49, glassW: 254, glassH: 74,
+               pillW: 262, pillH: 82, windowW: 310, windowH: 130),
+        Golden(size: .medium, digits: 2, countdownW: 80, segClusterW: 170,
                contentW: 262, contentH: 57, glassW: 302, glassH: 90,
                pillW: 310, pillH: 98, windowW: 358, windowH: 146),
-        Golden(size: .large, digits: 2, countdownW: 78, segClusterW: 204,
-               contentW: 296, contentH: 67, glassW: 344, glassH: 108,
-               pillW: 352, pillH: 116, windowW: 400, windowH: 164),
-        Golden(size: .large, digits: 3, countdownW: 96, segClusterW: 204,
+        Golden(size: .medium, digits: 3, countdownW: 94, segClusterW: 170,
+               contentW: 276, contentH: 57, glassW: 316, glassH: 90,
+               pillW: 324, pillH: 98, windowW: 372, windowH: 146),
+        Golden(size: .large, digits: 2, countdownW: 96, segClusterW: 204,
                contentW: 314, contentH: 67, glassW: 362, glassH: 108,
                pillW: 370, pillH: 116, windowW: 418, windowH: 164),
+        Golden(size: .large, digits: 3, countdownW: 112, segClusterW: 204,
+               contentW: 330, contentH: 67, glassW: 378, glassH: 108,
+               pillW: 386, pillH: 116, windowW: 434, windowH: 164),
     ]
 
     // MARK: - The size-class ladder these tables are indexed by
@@ -430,12 +430,11 @@ final class PillLayoutDerivationTests: XCTestCase {
         }
     }
 
-    /// The countdown column reserves one slot per rendered digit plus the
-    /// colon — the deliberate safety margin over the measured glyph widths is
-    /// what stops "17:00" rendering as "17:…".
-    func test_countdownWidth_coversEveryDigitSlotPlusTheColon() {
+    /// The countdown column reserves one slot per rendered digit, overtime's
+    /// leading `+`, and the colon. Missing the sign clipped `+10:00` to `+10:…`.
+    func test_countdownWidth_coversOvertimeSignEveryDigitAndTheColon() {
         for layout in allLayouts() {
-            let glyphNeed = CGFloat(layout.minuteDigits + 2) * layout.countdownDigitW
+            let glyphNeed = CGFloat(layout.minuteDigits + 3) * layout.countdownDigitW
                 + layout.countdownColonW
             XCTAssertGreaterThanOrEqual(layout.countdownW, glyphNeed, "\(label(layout))")
             XCTAssertLessThan(layout.countdownW - glyphNeed, 2,

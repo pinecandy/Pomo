@@ -197,9 +197,9 @@ final class PomoSizePresetTests: XCTestCase {
     /// If you deliberately retune a token, this table is SUPPOSED to fail —
     /// update it in the same commit and say so.
     func test_pillSizeForEachPreset_matchesTheFrozenSMLDimensionTable() {
-        XCTAssertEqual(PomoSize.small.pillSize,  NSSize(width: 238, height: 82))
-        XCTAssertEqual(PomoSize.medium.pillSize, NSSize(width: 296, height: 98))
-        XCTAssertEqual(PomoSize.large.pillSize,  NSSize(width: 352, height: 116))
+        XCTAssertEqual(PomoSize.small.pillSize,  NSSize(width: 250, height: 82))
+        XCTAssertEqual(PomoSize.medium.pillSize, NSSize(width: 310, height: 98))
+        XCTAssertEqual(PomoSize.large.pillSize,  NSSize(width: 370, height: 116))
     }
 
     /// The documented contract: a preset's canonical size is its 2-digit
