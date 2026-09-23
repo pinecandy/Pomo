@@ -48,8 +48,6 @@ final class TimerInstanceController {
     /// treated as effectively unreachable, not merely clipped.
     private static let minOnscreenOverlap: CGFloat = 40
 
-    private static var hoverScale: CGFloat { TuningStore.shared.hoverScale }
-
     var kind: TimerKind { source.kind }
 
     /// Bootstrap init — builds a brand-new `PomodoroSource` (restoring its
@@ -166,14 +164,12 @@ final class TimerInstanceController {
         hoverCancellable = hoverState.$isHovering
             .removeDuplicates()
             .sink { [weak self] hovering in
-                self?.applyHoverScale(hovering)
                 if hovering {
                     self?.activateEditorIfIdle()
                 } else {
                     self?.restorePreviousApplication()
                 }
             }
-        applyHoverScale(hoverState.isHovering)
 
         idleTransitionCancellable = source.$phase
             .dropFirst()
@@ -209,10 +205,6 @@ final class TimerInstanceController {
     }
 
     private func subscribeToTuning() {
-        TuningStore.shared.$hoverScale
-            .dropFirst()
-            .sink { [weak self] _ in self?.refreshGlassGeometry() }
-            .store(in: &tuningCancellables)
         TuningStore.shared.$glassOpacity
             .dropFirst()
             .sink { [weak self] op in self?.effectView?.alphaValue = op }
@@ -363,7 +355,6 @@ final class TimerInstanceController {
             } else {
                 effectView.frame = targetGlassRect
             }
-            applyHoverScale(hoverState.isHovering)
         }
 
         persistOrigin(newRect.origin)
@@ -442,35 +433,6 @@ final class TimerInstanceController {
 
     // MARK: - Glass geometry
 
-    private func applyHoverScale(_ hovering: Bool) {
-        guard let effectView = effectView,
-              let container = window.contentView else { return }
-        let layout = currentLayout()
-        layout.assertHoverScaleSafe(Self.hoverScale)
-        let base = layout.centeredGlassRect(in: container.bounds)
-        let target: NSRect
-        if hovering {
-            let s = Self.hoverScale
-            let newW = base.width * s
-            let newH = base.height * s
-            target = NSRect(
-                x: base.midX - newW / 2.0,
-                y: base.midY - newH / 2.0,
-                width: newW,
-                height: newH
-            )
-        } else {
-            target = base
-        }
-        effectView.maskImage = CapsuleMask.image(size: target.size)
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = Tokens.Glass.hoverDuration
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            ctx.allowsImplicitAnimation = true
-            effectView.animator().frame = target
-        }
-    }
-
     private func refreshGlassGeometry() {
         guard let effectView = effectView,
               let container = window.contentView else { return }
@@ -480,7 +442,6 @@ final class TimerInstanceController {
         effectView.frame = glassRect
         effectView.maskImage = CapsuleMask.image(size: glassRect.size)
         NSAnimationContext.endGrouping()
-        applyHoverScale(hoverState.isHovering)
     }
 
     private func currentLayout() -> PillLayout {

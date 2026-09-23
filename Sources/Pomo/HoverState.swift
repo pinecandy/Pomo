@@ -1,12 +1,9 @@
 import Combine
 
 /// Hover-state bridge: SwiftUI (`PomoView`) publishes the pill-hover flag,
-/// AppKit (`TimerInstanceController`) subscribes so it can scale that timer's
-/// NSVisualEffectView glass in sync with the SwiftUI reflection and glow.
-///
-/// The bridge exists because the VEV has to live outside SwiftUI to keep the
-/// live `.behindWindow` blur unfrozen. This flag keeps the AppKit glass aligned
-/// with the SwiftUI glass layers while text and controls remain screen-stable.
+/// AppKit (`TimerInstanceController`) subscribes so it can take and return
+/// keyboard focus. The live blur view is not resized on hover. A frame change
+/// resamples the behind-window blur and hitches the transition.
 ///
 /// Owned per-controller, never app-wide: `TimerInstanceController` creates one
 /// and injects it into its own `PomoView`.
