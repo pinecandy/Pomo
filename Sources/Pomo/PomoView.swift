@@ -91,6 +91,7 @@ struct PomoView: View {
     /// call sites that don't care (the POMO_RENDER_PNG offscreen harness)
     /// still compile.
     @ObservedObject var hoverState: PomoHoverState = PomoHoverState()
+    @ObservedObject var updateCenter = UpdateCenter.shared
     // Hover drives the CONTENTS: the pill expands slightly. The outer look
     // (edge, glass darkness) is fixed so no grey rim ever appears.
     // POMO_FORCE_HOVER pins hover on for screenshots, since `screencapture`
@@ -131,7 +132,8 @@ struct PomoView: View {
 
     private var layout: PillLayout {
         PillLayout(sizeClass: sizeController.current,
-                   minuteDigits: model.minuteDigits)
+                   minuteDigits: model.minuteDigits,
+                   showsUpdateSlot: updateCenter.isAvailable)
     }
 
     private var glassW: CGFloat { layout.glassW }
@@ -271,7 +273,11 @@ struct PomoView: View {
                 .frame(height: layout.spacing.ctrlHit)
             Group {
                 if isEditingSetup {
-                    durationEditor
+                    HStack(spacing: 0) {
+                        durationEditor
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        updateSlot
+                    }
                 } else {
                     bottomRow
                 }
@@ -452,15 +458,31 @@ struct PomoView: View {
     // [countdown mm:ss (left, fixed width)] —gap.gauge— [gauge (right)],
     // vertically centered (HStack's default cross-axis alignment).
     private var bottomRow: some View {
-        HStack(spacing: layout.spacing.gapGauge) {
-            countdownReadout
-            if isHovering, displayState != .idle {
-                Spacer(minLength: layout.spacing.gapGauge)
-                runtimeControls
-            } else {
-                segmentedBar
-                    .frame(width: layout.barRowW, height: layout.segRowH)
+        HStack(spacing: 0) {
+            HStack(spacing: layout.spacing.gapGauge) {
+                countdownReadout
+                if isHovering, displayState != .idle {
+                    Spacer(minLength: layout.spacing.gapGauge)
+                    runtimeControls
+                } else {
+                    segmentedBar
+                        .frame(width: layout.barRowW, height: layout.segRowH)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            updateSlot
+        }
+    }
+
+    @ViewBuilder
+    private var updateSlot: some View {
+        if layout.showsUpdateSlot {
+            controlButton(.update, symbol: "arrow.triangle.2.circlepath", label: "更新") {
+                updateCenter.install()
+            }
+            .padding(.leading, layout.spacing.gapControls)
+            .opacity(updateCenter.isInstalling ? 0.45 : 1)
+            .allowsHitTesting(!updateCenter.isInstalling)
         }
     }
 
@@ -609,6 +631,7 @@ struct PomoView: View {
         case toggle
         case addTime
         case end
+        case update
     }
 
     private var primaryButtonSymbol: String {

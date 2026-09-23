@@ -80,6 +80,7 @@ final class TimerInstanceController {
         subscribeToHover()
         subscribeToTuning()
         subscribeToLayoutInvalidation()
+        subscribeToUpdateAvailability()
         installHostingView(in: container)
         wireMenuCallbacks()
         installObservers()
@@ -211,8 +212,14 @@ final class TimerInstanceController {
             .store(in: &tuningCancellables)
     }
 
-    /// The only thing that can resize the pill besides an explicit S/M/L
-    /// change: crossing the 99↔100 minute boundary, which adds a digit slot.
+    private func subscribeToUpdateAvailability() {
+        UpdateCenter.shared.$isAvailable
+            .dropFirst()
+            .sink { [weak self] _ in self?.relayoutWindow() }
+            .store(in: &layoutCancellables)
+    }
+
+    /// Crossing the 99↔100 minute boundary adds a digit slot and resizes the pill.
     private func subscribeToLayoutInvalidation() {
         source.minuteDigitsPublisher
             .removeDuplicates()
@@ -452,7 +459,9 @@ final class TimerInstanceController {
     }
 
     private static func currentLayout(minuteDigits: Int, sizeController: PomoSizeController) -> PillLayout {
-        PillLayout(sizeClass: sizeController.current, minuteDigits: minuteDigits)
+        PillLayout(sizeClass: sizeController.current,
+                   minuteDigits: minuteDigits,
+                   showsUpdateSlot: UpdateCenter.shared.isAvailable)
     }
 
     // MARK: - Onscreen rescue

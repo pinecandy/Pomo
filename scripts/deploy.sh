@@ -69,6 +69,7 @@ swift build -c release 2>&1 | tail -1 || exit 1
 BINARY=".build/release/Pomo"
 [ -x "$BINARY" ] || { echo "no release binary at $BINARY"; exit 1; }
 echo "source: $(shasum "$BINARY" | cut -d' ' -f1)"
+COMMIT=$(git rev-parse HEAD)
 
 if pgrep -x Pomo >/dev/null 2>&1; then
     echo
@@ -85,6 +86,10 @@ for bundle in "${BUNDLES[@]}"; do
         continue
     fi
     install_branding "$bundle" || exit 1
+    printf '%s\n' "$COMMIT" > "$bundle/Contents/Resources/BuildCommit" || {
+        echo "FAILED to write BuildCommit"
+        exit 1
+    }
     cp "$BINARY" "$dest.new" || { echo "FAILED to stage"; exit 1; }
     mv -f "$dest.new" "$dest" || { echo "FAILED to swap in"; exit 1; }
     codesign --force -s - "$bundle" 2>&1 | sed 's/^/  /'

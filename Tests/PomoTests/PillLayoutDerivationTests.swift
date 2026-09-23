@@ -593,6 +593,19 @@ final class PillLayoutDerivationTests: XCTestCase {
     /// The hover assertion only checks the WIDTH axis. That is sound only
     /// while the pill is never taller than it is wide — if a size class ever
     /// inverts, the assertion would guard the wrong axis.
+    func test_updateSlot_addsOneControlColumnAndNothingElse() {
+        for size in PomoSize.allCases {
+            let plain = PillLayout(sizeClass: size, minuteDigits: 2)
+            let withSlot = PillLayout(sizeClass: size, minuteDigits: 2, showsUpdateSlot: true)
+            let slot = plain.spacing.gapControls + plain.spacing.ctrlHit
+            XCTAssertEqual(withSlot.updateSlotW, slot, "\(size) slot")
+            XCTAssertEqual(plain.updateSlotW, 0, "\(size) absent slot")
+            let row2 = plain.segClusterW + plain.countdownW + plain.spacing.gapGauge + slot
+            XCTAssertEqual(withSlot.contentW, PillLayout.ceil2(max(row2, plain.headerMinW)),
+                           "\(size) content grows by the slot only")
+        }
+    }
+
     func test_thePillIsAlwaysWiderThanItIsTall_soWidthIsTheBindingHoverConstraint() {
         for layout in allLayouts() {
             XCTAssertGreaterThan(layout.pillW, layout.pillH, "\(label(layout))")

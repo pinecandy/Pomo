@@ -295,6 +295,8 @@ struct PillLayout {
     /// 2 or 3 — see `PomodoroSource.minuteDigits`. Upper bound is 3 (Custom max
     /// is 180 minutes).
     let minuteDigits: Int
+    /// Trailing control column. Absent layouts stay at the current width.
+    var showsUpdateSlot: Bool = false
 
     var type: Tokens.TypeScale { Tokens.typeScale(for: sizeClass) }
     var spacing: Tokens.SpacingScale { Tokens.spacingScale(for: sizeClass) }
@@ -427,8 +429,13 @@ struct PillLayout {
     /// Using `segClusterW` (not the old fixed `barMinW`) means the pill is only
     /// as wide as the gauge actually draws, so its right edge stays aligned
     /// with the header's trailing edge.
+    /// One control, plus the gap before it. Zero when the update control is absent.
+    var updateSlotW: CGFloat {
+        showsUpdateSlot ? spacing.gapControls + spacing.ctrlHit : 0
+    }
     var contentW: CGFloat {
-        Self.ceil2(max(segClusterW + countdownW + spacing.gapGauge, headerMinW))
+        let row2 = segClusterW + countdownW + spacing.gapGauge + updateSlotW
+        return Self.ceil2(max(row2, headerMinW))
     }
     /// Row2's bar frame is exactly the segment cluster width, so the gauge fills
     /// its frame edge-to-edge and the last segment's right edge lands at the
