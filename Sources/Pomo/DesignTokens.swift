@@ -259,9 +259,6 @@ enum Tokens {
         static let segGapRatio: CGFloat = 0.4
     }
 
-    /// Glass and pointer-hover timings. SwiftUI animation curves stay in
-    /// `PomoView.Motion`. AppKit only animates the blur view when the pill
-    /// itself changes size.
     enum Glass {
         /// Pointer dwell required before the pill enters its expanded hover state.
         static let hoverActivationDelay: TimeInterval = 0.30
