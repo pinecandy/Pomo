@@ -259,20 +259,11 @@ enum Tokens {
         static let segGapRatio: CGFloat = 0.4
     }
 
-    /// Glass and pointer-hover timings. SwiftUI animation curves stay in
-    /// `PomoView.Motion`; the AppKit glass durations live here beside the
-    /// shared dwell threshold.
-    ///
-    /// The two values differ by 0.02s. That is probably accidental, but
-    /// unifying them would change one animation's duration — a behaviour
-    /// change, not a cleanup — so they stay distinct and merely visible.
     enum Glass {
         /// Pointer dwell required before the pill enters its expanded hover state.
         static let hoverActivationDelay: TimeInterval = 0.30
         /// Glass following a pill resize (S/M/L switch, digit-count change).
         static let resizeDuration: TimeInterval = 0.28
-        /// Glass following the hover grow/shrink.
-        static let hoverDuration: TimeInterval = 0.30
     }
 
     /// Modal NSAlert accessory-field sizing. Not per-`PomoSize`: these dialogs
