@@ -136,7 +136,7 @@ enum Tokens {
         /// Local fill behind the two inline fields while idle editing is active.
         static let editorFillOpacity: Double      = 0.12
 
-        // MARK: Glass top reflection
+        // MARK: Glass edge reflection
         static let glassHighlightLineWidth: CGFloat = 1
         static let glassHighlightOpacity: Double = 0.55
         static let glassHighlightFadeStop: Double = 0.36

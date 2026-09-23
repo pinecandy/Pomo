@@ -338,7 +338,7 @@ final class DesignTokensTests: XCTestCase {
         XCTAssertLessThan(Tokens.Decor.opacityPausedDim, 1, "pausing must visibly dim the pill")
     }
 
-    func test_glassHighlight_isAThinTopReflection() {
+    func test_glassHighlight_isAThinEdgeReflection() {
         XCTAssertGreaterThan(Tokens.Decor.glassHighlightLineWidth, 0)
         XCTAssertLessThanOrEqual(Tokens.Decor.glassHighlightLineWidth, 1)
         XCTAssertGreaterThan(Tokens.Decor.glassHighlightFadeStop, 0)
