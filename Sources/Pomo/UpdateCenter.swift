@@ -57,8 +57,10 @@ enum UpdateGit {
     }
 
     static func readInstalledCommit() -> String? {
-        guard let url = Bundle.main.url(forResource: "BuildCommit", withExtension: nil),
-              let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        // `url(forResource:withExtension: nil)` does not find an extensionless file.
+        guard let resources = Bundle.main.resourceURL else { return nil }
+        let url = resources.appendingPathComponent("BuildCommit")
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         return normalizedRevision(text)
     }
 
@@ -134,7 +136,10 @@ final class UpdateCenter: ObservableObject {
         Task.detached {
             let remote = UpdateGit.remoteMain(at: repo)
             let show = updateIsAvailable(installed: installed, remote: remote)
-            await MainActor.run { UpdateCenter.shared.isAvailable = show }
+            await MainActor.run {
+                UpdateCenter.shared.isAvailable = show
+                TimerRegistry.shared.instances.forEach { $0.relayoutWindow() }
+            }
         }
     }
 
