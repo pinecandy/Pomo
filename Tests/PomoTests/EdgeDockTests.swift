@@ -20,6 +20,18 @@ final class EdgeDockTests: XCTestCase {
         XCTAssertNil(EdgeDock.side(frame: CGRect(x: 100, y: 100, width: 200, height: 80), screen: screen))
     }
 
+    func test_progress_isHalfwayWhenTheFrameTouchesTheEdge() {
+        let touching = CGRect(x: 1000 - 200, y: 100, width: 200, height: 80)
+        let approach = EdgeDock.progress(frame: touching, screen: screen)
+        XCTAssertEqual(approach.side, .right)
+        XCTAssertEqual(approach.amount, 0.5, accuracy: 0.001)
+    }
+
+    func test_progress_staysAtThePillWhenFarFromEitherEdge() {
+        let middle = CGRect(x: 400, y: 100, width: 200, height: 80)
+        XCTAssertEqual(EdgeDock.progress(frame: middle, screen: screen).amount, 0, accuracy: 0.001)
+    }
+
     func test_parkedFrame_showsOneThirdAndJoinsTheBezel() {
         let diameter: CGFloat = 90
         let left = EdgeDock.parkedFrame(side: .left, diameter: diameter, anchorMidY: 400,

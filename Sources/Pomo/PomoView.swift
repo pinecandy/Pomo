@@ -16,6 +16,7 @@ private enum Motion {
     static let hoverPill = Animation.spring(response: 0.32, dampingFraction: 0.72)
     static let overtime  = Animation.easeInOut(duration: 0.7)
     static let taskSlot  = Animation.spring(response: 0.34, dampingFraction: 0.86)
+    static let edge      = Animation.easeInOut(duration: 0.38)
 
     /// Peak scale and hold time for each pulse — kept beside their curves so
     /// the two numbers that must stay in step sit adjacent.
@@ -215,12 +216,10 @@ struct PomoView: View {
     var body: some View {
         ZStack {
             Color.clear
-            if edge.style == nil {
-                pill
-            } else {
-                edgeSphere
-            }
+            pill.opacity(1 - edge.progress)
+            edgeSphere.opacity(edge.progress)
         }
+        .animation(edge.animated ? Motion.edge : nil, value: edge.progress)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Drive the whole-pill resize from SwiftUI (the window's own setFrame
         // is animate:false in TimerInstanceController so the two don't
@@ -289,24 +288,27 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// Black sphere. The screen bezel clips it, so the visible cap reads as
-    /// attached to the edge. The ring is the remaining-time circle.
+    /// Black sphere. While approaching it grows from the side facing the
+    /// screen edge. Once parked it fills the window, which sits on the bezel.
+    @ViewBuilder
     private var edgeSphere: some View {
-        let diameter = edge.style == .parked ? min(glassW, glassH) : glassH
-        let ratio = model.remainingRatio
-        return ZStack {
+        let diameter = glassH
+        let bubble = ZStack {
             Circle().fill(Color.black)
             Circle()
-                .trim(from: 0, to: ratio)
+                .trim(from: 0, to: model.remainingRatio)
                 .stroke(model.isOvertime ? Color.orange : Color.white,
                         style: StrokeStyle(lineWidth: diameter * 0.08, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .padding(diameter * 0.16)
         }
-        .frame(width: edge.style == .parked ? nil : diameter,
-               height: edge.style == .parked ? nil : diameter)
-        .frame(maxWidth: edge.style == .parked ? .infinity : nil,
-               maxHeight: edge.style == .parked ? .infinity : nil)
+        .frame(width: diameter, height: diameter)
+        if edge.parked {
+            bubble.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            bubble.frame(width: pillSize.width, height: pillSize.height,
+                         alignment: edge.side == .left ? .leading : .trailing)
+        }
     }
 
     private var glassHighlight: some View {
