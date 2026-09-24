@@ -21,14 +21,15 @@ final class EdgeDockTests: XCTestCase {
         XCTAssertNil(EdgeDock.side(frame: CGRect(x: 100, y: 100, width: 200, height: 80), screen: screen))
     }
 
-    func test_parkedFrame_isASmallCircleTuckedIntoTheBezel() {
-        let frame = EdgeDock.parkedFrame(side: .right, anchorMidY: 400, screen: screen, visible: visible)
-        XCTAssertEqual(frame.width, EdgeDock.diameter)
-        XCTAssertEqual(frame.height, EdgeDock.diameter)
-        XCTAssertLessThan(EdgeDock.diameter, 80)
-        XCTAssertEqual(frame.maxX - screen.maxX, EdgeDock.tuck, accuracy: 0.001)
-        XCTAssertGreaterThan(screen.maxX - frame.minX, frame.width / 2)
-        XCTAssertEqual(frame.midY, 400, accuracy: 0.001)
+    func test_parkedFrame_keepsTheFaceOnScreenAndRunsTheNeckPastTheBezel() {
+        let right = EdgeDock.parkedFrame(side: .right, anchorMidY: 400, screen: screen, visible: visible)
+        let left = EdgeDock.parkedFrame(side: .left, anchorMidY: 400, screen: screen, visible: visible)
+        XCTAssertEqual(right.width, EdgeDock.diameter + EdgeDock.neck)
+        XCTAssertEqual(right.height, EdgeDock.diameter)
+        XCTAssertEqual(screen.maxX - right.minX, EdgeDock.diameter, accuracy: 0.001)
+        XCTAssertEqual(right.maxX - screen.maxX, EdgeDock.neck, accuracy: 0.001)
+        XCTAssertEqual(left.maxX - screen.minX, EdgeDock.diameter, accuracy: 0.001)
+        XCTAssertEqual(screen.minX - left.minX, EdgeDock.neck, accuracy: 0.001)
     }
 
     func test_flexibleMarginsShiftTheGlassWhenTheWindowGrows() {
