@@ -216,10 +216,15 @@ struct PomoView: View {
     var body: some View {
         ZStack {
             Color.clear
-            pill.opacity(1 - edge.progress)
-            edgeSphere.opacity(edge.progress)
+            pill
+                .opacity(edge.docked ? 0 : 1)
+                .scaleEffect(edge.docked ? 0.45 : 1,
+                             anchor: edge.side == .left ? .leading : .trailing)
+            dockedTimer
+                .opacity(edge.docked ? 1 : 0)
+                .scaleEffect(edge.docked ? 1 : 0.72)
         }
-        .animation(edge.animated ? Motion.edge : nil, value: edge.progress)
+        .animation(Motion.edge, value: edge.docked)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Drive the whole-pill resize from SwiftUI (the window's own setFrame
         // is animate:false in TimerInstanceController so the two don't
@@ -288,27 +293,26 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// Black sphere. While approaching it grows from the side facing the
-    /// screen edge. Once parked it fills the window, which sits on the bezel.
-    @ViewBuilder
-    private var edgeSphere: some View {
-        let diameter = glassH
-        let bubble = ZStack {
+    /// The same countdown and gauge light, wrapped into a small circle.
+    /// Header copy is gone. The ring is the gauge, in the user's accent.
+    private var dockedTimer: some View {
+        let diameter = EdgeDock.diameter
+        return ZStack {
             Circle().fill(Color.black)
             Circle()
                 .trim(from: 0, to: model.remainingRatio)
-                .stroke(model.isOvertime ? Color.orange : Color.white,
-                        style: StrokeStyle(lineWidth: diameter * 0.08, lineCap: .round))
+                .stroke(journeyBright,
+                        style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .padding(diameter * 0.16)
+                .padding(5)
+            Text(countdownLabel)
+                .font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
         }
         .frame(width: diameter, height: diameter)
-        if edge.parked {
-            bubble.frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            bubble.frame(width: pillSize.width, height: pillSize.height,
-                         alignment: edge.side == .left ? .leading : .trailing)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var glassHighlight: some View {

@@ -20,26 +20,13 @@ final class EdgeDockTests: XCTestCase {
         XCTAssertNil(EdgeDock.side(frame: CGRect(x: 100, y: 100, width: 200, height: 80), screen: screen))
     }
 
-    func test_progress_isHalfwayWhenTheFrameTouchesTheEdge() {
-        let touching = CGRect(x: 1000 - 200, y: 100, width: 200, height: 80)
-        let approach = EdgeDock.progress(frame: touching, screen: screen)
-        XCTAssertEqual(approach.side, .right)
-        XCTAssertEqual(approach.amount, 0.5, accuracy: 0.001)
-    }
-
-    func test_progress_staysAtThePillWhenFarFromEitherEdge() {
-        let middle = CGRect(x: 400, y: 100, width: 200, height: 80)
-        XCTAssertEqual(EdgeDock.progress(frame: middle, screen: screen).amount, 0, accuracy: 0.001)
-    }
-
-    func test_parkedFrame_showsOneThirdAndJoinsTheBezel() {
-        let diameter: CGFloat = 90
-        let left = EdgeDock.parkedFrame(side: .left, diameter: diameter, anchorMidY: 400,
-                                        screen: screen, visible: visible)
-        let right = EdgeDock.parkedFrame(side: .right, diameter: diameter, anchorMidY: 400,
-                                         screen: screen, visible: visible)
-        XCTAssertEqual(left.maxX - screen.minX, diameter / 3, accuracy: 0.001)
-        XCTAssertEqual(screen.maxX - right.minX, diameter / 3, accuracy: 0.001)
-        XCTAssertEqual(left.midY, 400, accuracy: 0.001)
+    func test_parkedFrame_isASmallCircleTuckedIntoTheBezel() {
+        let frame = EdgeDock.parkedFrame(side: .right, anchorMidY: 400, screen: screen, visible: visible)
+        XCTAssertEqual(frame.width, EdgeDock.diameter)
+        XCTAssertEqual(frame.height, EdgeDock.diameter)
+        XCTAssertLessThan(EdgeDock.diameter, 80)
+        XCTAssertEqual(frame.maxX - screen.maxX, EdgeDock.tuck, accuracy: 0.001)
+        XCTAssertGreaterThan(screen.maxX - frame.minX, frame.width / 2)
+        XCTAssertEqual(frame.midY, 400, accuracy: 0.001)
     }
 }

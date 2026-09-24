@@ -317,40 +317,26 @@ final class TimerInstanceController {
         guard !adjustingFrame else { return }
         persistOrigin(window.frame.origin)
         guard let screen = window.screen ?? NSScreen.main else { return }
-        let approach = EdgeDock.progress(frame: window.frame, screen: screen.frame)
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
-        if dragging {
-            edge.animated = false
-            edge.side = approach.side
-            edge.progress = approach.amount
-            if edge.parked {
-                effectView?.isHidden = true
-                return
-            }
-            effectView?.isHidden = false
-            effectView?.alphaValue = TuningStore.shared.glassOpacity * (1 - approach.amount)
-            return
-        }
+        if dragging { return }
         if let side = EdgeDock.side(frame: window.frame, screen: screen.frame) {
             park(side, on: screen, animated: true)
-        } else if edge.progress > 0 || edge.parked {
+        } else if edge.docked {
             restorePill(animated: true)
+        } else {
+            clampPillInside(screen)
         }
     }
 
     private func park(_ side: ScreenEdgeSide, on screen: NSScreen, animated: Bool = false) {
-        let diameter = currentLayout().glassH
         let frame = EdgeDock.parkedFrame(
             side: side,
-            diameter: diameter,
             anchorMidY: window.frame.midY,
             screen: screen.frame,
             visible: screen.visibleFrame
         )
-        edge.animated = animated
         edge.side = side
-        edge.parked = true
-        edge.progress = 1
+        edge.docked = true
         effectView?.isHidden = true
         setFrame(frame, animated: animated)
         let defaults = UserDefaults.standard
@@ -360,9 +346,7 @@ final class TimerInstanceController {
     }
 
     private func restorePill(animated: Bool = false) {
-        edge.animated = animated
-        edge.parked = false
-        edge.progress = 0
+        edge.docked = false
         effectView?.isHidden = false
         effectView?.alphaValue = TuningStore.shared.glassOpacity
         let layout = currentLayout()
@@ -397,6 +381,27 @@ final class TimerInstanceController {
             window.setFrameOrigin(NSPoint(x: window.frame.origin.x, y: originY))
         }
         park(side, on: screen)
+    }
+
+    /// A release that stays inside must not leave the pill hanging off the
+    /// screen. That clipped the left side after repeated drags.
+    private func clampPillInside(_ screen: NSScreen) {
+        let layout = currentLayout()
+        let size = layout.windowSize
+        var rect = NSRect(origin: window.frame.origin, size: size)
+        let clamped = Self.clamp(rect, into: screen.visibleFrame)
+        guard abs(clamped.origin.x - window.frame.origin.x) > 0.5
+                || abs(clamped.origin.y - window.frame.origin.y) > 0.5
+                || abs(window.frame.width - size.width) > 0.5 else { return }
+        rect = clamped
+        effectView?.isHidden = false
+        effectView?.alphaValue = TuningStore.shared.glassOpacity
+        setFrame(rect, animated: true)
+        if let effectView {
+            effectView.frame = layout.centeredGlassRect(in: NSRect(origin: .zero, size: size))
+            effectView.maskImage = CapsuleMask.image(size: effectView.frame.size)
+        }
+        persistOrigin(rect.origin)
     }
 
     private func setFrame(_ rect: NSRect, animated: Bool) {
@@ -436,7 +441,7 @@ final class TimerInstanceController {
     /// preserved across a resize, so the pill grows leftward/downward rather
     /// than drifting.
     private func applyWindowSize(animate: Bool) {
-        if edge.parked { return }
+        if edge.docked { return }
         let layout = currentLayout()
         let winSize = layout.windowSize
         let oldFrame = window.frame
