@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 import XCTest
 
 @testable import Pomo
@@ -63,5 +64,52 @@ final class PomoViewMotionTests: XCTestCase {
 
         XCTAssertEqual(idle, TaskSlotOffsets(display: 0, editor: 0))
         XCTAssertEqual(editing, TaskSlotOffsets(display: 0, editor: 0))
+    }
+
+    func test_glassHighlight_restsOnTheTopEdgeWhenThePointerIsCentered() {
+        let direction = GlassHighlightDirection.resolve(offsetX: 0, offsetY: 0)
+
+        XCTAssertEqual(direction.maskStart, UnitPoint(x: 0.5, y: 0))
+        XCTAssertEqual(direction.maskEnd, UnitPoint(x: 0.5, y: 1))
+    }
+
+    func test_glassHighlight_facesTheSideThePointerIsOn() {
+        let right = GlassHighlightDirection.resolve(offsetX: 80, offsetY: 0)
+        let left = GlassHighlightDirection.resolve(offsetX: -4, offsetY: 0)
+        let below = GlassHighlightDirection.resolve(offsetX: 0, offsetY: 30)
+        let above = GlassHighlightDirection.resolve(offsetX: 0, offsetY: -9)
+
+        XCTAssertEqual(right.maskStart, UnitPoint(x: 1, y: 0.5))
+        XCTAssertEqual(right.maskEnd, UnitPoint(x: 0, y: 0.5))
+        XCTAssertEqual(left.maskStart, UnitPoint(x: 0, y: 0.5))
+        XCTAssertEqual(below.maskStart, UnitPoint(x: 0.5, y: 1))
+        XCTAssertEqual(above.maskStart, UnitPoint(x: 0.5, y: 0))
+    }
+
+    func test_glassHighlight_readsAppKitPointsWithYGrowingUpward() {
+        let above = GlassHighlightDirection.resolve(localX: 10, localY: 40, midX: 10, midY: 20)
+        let left = GlassHighlightDirection.resolve(localX: 2, localY: 20, midX: 10, midY: 20)
+
+        XCTAssertEqual(above.maskStart, UnitPoint(x: 0.5, y: 0))
+        XCTAssertEqual(left.maskStart, UnitPoint(x: 0, y: 0.5))
+    }
+
+    func test_glassHighlight_keepsTheBrightSpotCenteredOnTheFacingEdge() {
+        let right = GlassHighlightDirection.resolve(offsetX: 10, offsetY: 0)
+        let near = GlassHighlightDirection.resolve(offsetX: 2, offsetY: -2)
+        let far = GlassHighlightDirection.resolve(offsetX: 50, offsetY: -50)
+
+        XCTAssertEqual(right.strokeStart.x, 0.5, accuracy: 1e-9)
+        XCTAssertEqual(right.strokeEnd.x, 0.5, accuracy: 1e-9)
+        XCTAssertNotEqual(right.strokeStart.y, right.strokeEnd.y)
+        XCTAssertEqual(near, far)
+    }
+
+    func test_glassHighlight_followsADiagonalPointer() {
+        let direction = GlassHighlightDirection.resolve(offsetX: 3, offsetY: 3)
+        let edge = 0.5 + (sqrt(2) / 4)
+
+        XCTAssertEqual(direction.maskStart.x, edge, accuracy: 1e-9)
+        XCTAssertEqual(direction.maskStart.y, edge, accuracy: 1e-9)
     }
 }

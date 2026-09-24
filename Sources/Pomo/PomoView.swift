@@ -73,6 +73,45 @@ struct HoverHitRegion: Equatable {
     }
 }
 
+/// Bright edge of the glass specular. `maskStart` faces the pointer and
+/// `maskEnd` is the opposite side. The stroke runs across that edge so the
+/// white peak stays in the middle. A centered pointer keeps the top edge.
+struct GlassHighlightDirection: Equatable {
+    var maskStart: UnitPoint
+    var maskEnd: UnitPoint
+    var strokeStart: UnitPoint
+    var strokeEnd: UnitPoint
+
+    /// `+x` is right and `+y` is down, matching SwiftUI.
+    static func resolve(offsetX: CGFloat, offsetY: CGFloat) -> Self {
+        let length = hypot(offsetX, offsetY)
+        let dx: CGFloat
+        let dy: CGFloat
+        if length < 0.5 {
+            dx = 0
+            dy = -1
+        } else {
+            dx = offsetX / length
+            dy = offsetY / length
+        }
+        return Self(
+            maskStart: point(dx, dy),
+            maskEnd: point(-dx, -dy),
+            strokeStart: point(-dy, dx),
+            strokeEnd: point(dy, -dx)
+        )
+    }
+
+    /// AppKit view space, where `localY` grows upward.
+    static func resolve(localX: CGFloat, localY: CGFloat, midX: CGFloat, midY: CGFloat) -> Self {
+        resolve(offsetX: localX - midX, offsetY: midY - localY)
+    }
+
+    private static func point(_ dx: CGFloat, _ dy: CGFloat) -> UnitPoint {
+        UnitPoint(x: 0.5 + dx * 0.5, y: 0.5 + dy * 0.5)
+    }
+}
+
 struct PomoView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject var model: PomodoroSource
@@ -232,30 +271,11 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// A single specular reflection along the top edge. This is light on the
-    /// existing glass, not another glass body or a full perimeter stroke.
+    /// Specular reflection on the glass edge that faces the pointer. Resting
+    /// position is the top edge. This is light on the existing glass, not
+    /// another glass body or a full perimeter stroke.
     private var glassHighlight: some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
-            .strokeBorder(
-                LinearGradient(
-                    colors: [.clear, .white.opacity(Tokens.Decor.glassHighlightOpacity), .clear],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                lineWidth: Tokens.Decor.glassHighlightLineWidth
-            )
-            .mask(
-                LinearGradient(
-                    stops: [
-                        .init(color: .white, location: 0),
-                        .init(color: .clear, location: Tokens.Decor.glassHighlightFadeStop),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .frame(width: glassW, height: glassH)
-            .allowsHitTesting(false)
+        GlassHighlight(cornerRadius: cornerRadius, width: glassW, height: glassH)
     }
 
     private var overtimeGlowOpacity: Double {
@@ -836,5 +856,101 @@ private struct SetupTabBridge: NSViewRepresentable {
         }
 
         deinit { stop() }
+    }
+}
+
+/// Owns the pointer sample so the rest of the pill does not redraw with it.
+private final class GlassHighlightPointer: ObservableObject {
+    @Published private(set) var direction = GlassHighlightDirection.resolve(offsetX: 0, offsetY: 0)
+
+    func aim(localX: CGFloat, localY: CGFloat, midX: CGFloat, midY: CGFloat) {
+        let next = GlassHighlightDirection.resolve(
+            localX: localX, localY: localY, midX: midX, midY: midY)
+        if next != direction { direction = next }
+    }
+}
+
+private struct GlassHighlight: View {
+    @StateObject private var pointer = GlassHighlightPointer()
+    var cornerRadius: CGFloat
+    var width: CGFloat
+    var height: CGFloat
+
+    var body: some View {
+        let direction = pointer.direction
+        RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
+            .strokeBorder(
+                LinearGradient(
+                    colors: [.clear, .white.opacity(Tokens.Decor.glassHighlightOpacity), .clear],
+                    startPoint: direction.strokeStart,
+                    endPoint: direction.strokeEnd
+                ),
+                lineWidth: Tokens.Decor.glassHighlightLineWidth
+            )
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .clear, location: Tokens.Decor.glassHighlightFadeStop),
+                    ],
+                    startPoint: direction.maskStart,
+                    endPoint: direction.maskEnd
+                )
+            )
+            .frame(width: width, height: height)
+            .background(GlassHighlightPointerProbe(pointer: pointer))
+            .allowsHitTesting(false)
+    }
+}
+
+private struct GlassHighlightPointerProbe: NSViewRepresentable {
+    var pointer: GlassHighlightPointer
+
+    func makeNSView(context: Context) -> GlassHighlightPointerView {
+        let view = GlassHighlightPointerView()
+        view.pointer = pointer
+        return view
+    }
+
+    func updateNSView(_ view: GlassHighlightPointerView, context: Context) {
+        view.pointer = pointer
+    }
+}
+
+/// Samples `NSEvent.mouseLocation` so the light follows the pointer even
+/// when it is outside this window. A global `mouseMoved` monitor needs
+/// Accessibility permission; one 60Hz poll does not.
+private final class GlassHighlightPointerView: NSView {
+    var pointer: GlassHighlightPointer?
+    private var timer: Timer?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        startSampling()
+        sample()
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    deinit { timer?.invalidate() }
+
+    private func startSampling() {
+        timer?.invalidate()
+        guard window != nil else {
+            timer = nil
+            return
+        }
+        // ponytail: 60Hz poll. Drop the rate if it shows up in CPU.
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            self?.sample()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    private func sample() {
+        guard let window, let pointer, bounds.width > 0, bounds.height > 0 else { return }
+        let local = convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
+        pointer.aim(localX: local.x, localY: local.y, midX: bounds.midX, midY: bounds.midY)
     }
 }
