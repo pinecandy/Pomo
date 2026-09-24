@@ -289,9 +289,6 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// Specular reflection on the glass edge that faces the pointer. Resting
-    /// position is the top edge. This is light on the existing glass, not
-    /// another glass body or a full perimeter stroke.
     /// Black sphere. The screen bezel clips it, so the visible cap reads as
     /// attached to the edge. The ring is the remaining-time circle.
     private var edgeSphere: some View {
