@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import XCTest
 
@@ -28,5 +29,30 @@ final class EdgeDockTests: XCTestCase {
         XCTAssertEqual(frame.maxX - screen.maxX, EdgeDock.tuck, accuracy: 0.001)
         XCTAssertGreaterThan(screen.maxX - frame.minX, frame.width / 2)
         XCTAssertEqual(frame.midY, 400, accuracy: 0.001)
+    }
+
+    func test_flexibleMarginsShiftTheGlassWhenTheWindowGrows() {
+        let parent = NSView(frame: NSRect(x: 0, y: 0, width: 64, height: 64))
+        let glass = NSView(frame: NSRect(x: 8, y: 20, width: 48, height: 24))
+        glass.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        parent.addSubview(glass)
+
+        parent.setFrameSize(NSSize(width: 420, height: 140))
+
+        XCTAssertNotEqual(glass.frame.origin.y, 20)
+    }
+
+    func test_glassKeepsTheCenteredRectWhenItDoesNotAutoresize() {
+        let parent = NSView(frame: NSRect(x: 0, y: 0, width: 64, height: 64))
+        let glass = NSView(frame: .zero)
+        glass.autoresizingMask = []
+        parent.addSubview(glass)
+        parent.setFrameSize(NSSize(width: 420, height: 140))
+
+        let layout = PillLayout(sizeClass: .medium, minuteDigits: 2)
+        let target = layout.centeredGlassRect(in: parent.bounds)
+        glass.frame = target
+
+        XCTAssertEqual(glass.frame, target)
     }
 }

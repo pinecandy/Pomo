@@ -157,7 +157,10 @@ final class TimerInstanceController {
         effectView.appearance = NSAppearance(named: .vibrantDark)
         effectView.wantsLayer = true
         effectView.maskImage = CapsuleMask.image(size: pillRect.size)
-        effectView.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        // Flexible margins re-split the leftover space on every resize. Docking
+        // grows the window from a 64pt circle back to the pill, so those margins
+        // walked the glass away from the content a little more each time.
+        effectView.autoresizingMask = []
         effectView.alphaValue = TuningStore.shared.glassOpacity
         container.addSubview(effectView)
         self.effectView = effectView
@@ -357,11 +360,9 @@ final class TimerInstanceController {
         if let screen = window.screen ?? NSScreen.main {
             rect = Self.clamp(rect, into: screen.visibleFrame)
         }
+        effectView?.isHidden = true
         setFrame(rect, animated: animated)
-        if let effectView {
-            effectView.frame = layout.centeredGlassRect(in: NSRect(origin: .zero, size: size))
-            effectView.maskImage = CapsuleMask.image(size: effectView.frame.size)
-        }
+        if !animated { syncGlass() }
         UserDefaults.standard.removeObject(forKey: TimerDefaultsKey.field(index, "dock"))
         persistOrigin(rect.origin)
     }
@@ -394,13 +395,8 @@ final class TimerInstanceController {
                 || abs(clamped.origin.y - window.frame.origin.y) > 0.5
                 || abs(window.frame.width - size.width) > 0.5 else { return }
         rect = clamped
-        effectView?.isHidden = false
-        effectView?.alphaValue = TuningStore.shared.glassOpacity
+        effectView?.isHidden = true
         setFrame(rect, animated: true)
-        if let effectView {
-            effectView.frame = layout.centeredGlassRect(in: NSRect(origin: .zero, size: size))
-            effectView.maskImage = CapsuleMask.image(size: effectView.frame.size)
-        }
         persistOrigin(rect.origin)
     }
 
@@ -412,12 +408,29 @@ final class TimerInstanceController {
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 window.animator().setFrame(rect, display: true, animate: true)
             } completionHandler: {
-                MainActor.assumeIsolated { self.adjustingFrame = false }
+                MainActor.assumeIsolated {
+                    self.adjustingFrame = false
+                    self.syncGlass()
+                }
             }
             return
         }
         window.setFrame(rect, display: true, animate: false)
         adjustingFrame = false
+    }
+
+    /// Place the blur from the window's real bounds. Call this only after the
+    /// frame has finished changing. The SwiftUI pill centers itself in those
+    /// same bounds, so the glass has to be derived from them, not from the
+    /// size the window had at the start of the animation.
+    private func syncGlass() {
+        guard !edge.docked, let effectView, let container = window.contentView else { return }
+        let layout = currentLayout()
+        let rect = layout.centeredGlassRect(in: container.bounds)
+        effectView.frame = rect
+        effectView.maskImage = CapsuleMask.image(size: rect.size)
+        effectView.alphaValue = TuningStore.shared.glassOpacity
+        effectView.isHidden = false
     }
 
     private func persistOrigin(_ origin: NSPoint) {
