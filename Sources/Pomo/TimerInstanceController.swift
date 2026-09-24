@@ -317,25 +317,28 @@ final class TimerInstanceController {
         guard !adjustingFrame else { return }
         persistOrigin(window.frame.origin)
         guard let screen = window.screen ?? NSScreen.main else { return }
-        let side = EdgeDock.side(frame: window.frame, screen: screen.frame)
+        let approach = EdgeDock.progress(frame: window.frame, screen: screen.frame)
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
         if dragging {
-            if edge.style == .parked {
-                if side == nil { restorePill() }
+            edge.animated = false
+            edge.side = approach.side
+            edge.progress = approach.amount
+            if edge.parked {
+                effectView?.isHidden = true
                 return
             }
-            edge.style = side == nil ? nil : .approaching
-            effectView?.isHidden = side != nil
+            effectView?.isHidden = false
+            effectView?.alphaValue = TuningStore.shared.glassOpacity * (1 - approach.amount)
             return
         }
-        if let side {
-            park(side, on: screen)
-        } else if edge.style != nil {
-            restorePill()
+        if let side = EdgeDock.side(frame: window.frame, screen: screen.frame) {
+            park(side, on: screen, animated: true)
+        } else if edge.progress > 0 || edge.parked {
+            restorePill(animated: true)
         }
     }
 
-    private func park(_ side: ScreenEdgeSide, on screen: NSScreen) {
+    private func park(_ side: ScreenEdgeSide, on screen: NSScreen, animated: Bool = false) {
         let diameter = currentLayout().glassH
         let frame = EdgeDock.parkedFrame(
             side: side,
@@ -344,20 +347,24 @@ final class TimerInstanceController {
             screen: screen.frame,
             visible: screen.visibleFrame
         )
-        adjustingFrame = true
-        window.setFrame(frame, display: true, animate: false)
-        adjustingFrame = false
-        edge.style = .parked
+        edge.animated = animated
+        edge.side = side
+        edge.parked = true
+        edge.progress = 1
         effectView?.isHidden = true
+        setFrame(frame, animated: animated)
         let defaults = UserDefaults.standard
         defaults.set(side == .left ? "left" : "right", forKey: TimerDefaultsKey.field(index, "dock"))
         defaults.set(Double(frame.midY), forKey: TimerDefaultsKey.field(index, "dockMidY"))
         persistOrigin(frame.origin)
     }
 
-    private func restorePill() {
-        edge.style = nil
+    private func restorePill(animated: Bool = false) {
+        edge.animated = animated
+        edge.parked = false
+        edge.progress = 0
         effectView?.isHidden = false
+        effectView?.alphaValue = TuningStore.shared.glassOpacity
         let layout = currentLayout()
         let size = layout.windowSize
         let mid = CGPoint(x: window.frame.midX, y: window.frame.midY)
@@ -366,9 +373,7 @@ final class TimerInstanceController {
         if let screen = window.screen ?? NSScreen.main {
             rect = Self.clamp(rect, into: screen.visibleFrame)
         }
-        adjustingFrame = true
-        window.setFrame(rect, display: true, animate: false)
-        adjustingFrame = false
+        setFrame(rect, animated: animated)
         if let effectView {
             effectView.frame = layout.centeredGlassRect(in: NSRect(origin: .zero, size: size))
             effectView.maskImage = CapsuleMask.image(size: effectView.frame.size)
@@ -394,6 +399,22 @@ final class TimerInstanceController {
         park(side, on: screen)
     }
 
+    private func setFrame(_ rect: NSRect, animated: Bool) {
+        adjustingFrame = true
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.38
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                window.animator().setFrame(rect, display: true, animate: true)
+            } completionHandler: {
+                MainActor.assumeIsolated { self.adjustingFrame = false }
+            }
+            return
+        }
+        window.setFrame(rect, display: true, animate: false)
+        adjustingFrame = false
+    }
+
     private func persistOrigin(_ origin: NSPoint) {
         let d = UserDefaults.standard
         d.set(Double(origin.x), forKey: TimerDefaultsKey.field(index, "x"))
@@ -415,7 +436,7 @@ final class TimerInstanceController {
     /// preserved across a resize, so the pill grows leftward/downward rather
     /// than drifting.
     private func applyWindowSize(animate: Bool) {
-        if edge.style == .parked { return }
+        if edge.parked { return }
         let layout = currentLayout()
         let winSize = layout.windowSize
         let oldFrame = window.frame
