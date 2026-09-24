@@ -8,11 +8,13 @@ enum ScreenEdgeSide: Equatable {
 
 /// Left/right screen-edge parking. Top and bottom never dock.
 enum EdgeDock {
-    /// Small sphere. The pill height was too large.
+    /// The on-screen face. The countdown and the gauge ring live here.
     static let diameter: CGFloat = 64
-    /// How far the sphere sits past the bezel so it reads as attached.
-    /// The face, including the countdown, stays on screen.
-    static let tuck: CGFloat = 14
+    /// Rounded continuation past the bezel. A plain circle clipped by the
+    /// screen edge reads as a circle set down beside the wall. This neck
+    /// is the outer half of the capsule, so the body runs into the edge.
+    static let neck: CGFloat = 32
+    static var parkedSize: CGSize { CGSize(width: diameter + neck, height: diameter) }
 
     static func side(frame: CGRect, screen: CGRect) -> ScreenEdgeSide? {
         let pastLeft = screen.minX - frame.minX
@@ -29,16 +31,16 @@ enum EdgeDock {
         let x: CGFloat
         switch side {
         case .left:
-            x = screen.minX - tuck
+            x = screen.minX - neck
         case .right:
-            x = screen.maxX - diameter + tuck
+            x = screen.maxX - diameter
         }
         var y = anchorMidY - diameter / 2
         let minY = visible.minY
         let maxY = visible.maxY - diameter
         if y < minY { y = minY }
         if y > maxY { y = maxY }
-        return CGRect(x: x, y: y, width: diameter, height: diameter)
+        return CGRect(x: x, y: y, width: parkedSize.width, height: parkedSize.height)
     }
 }
 

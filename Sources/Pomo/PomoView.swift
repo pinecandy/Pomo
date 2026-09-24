@@ -293,26 +293,32 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// The same countdown and gauge light, wrapped into a small circle.
-    /// Header copy is gone. The ring is the gauge, in the user's accent.
+    /// Capsule running into the bezel. The ring and the time stay on the
+    /// on-screen face, so the screen edge does not slice them.
     private var dockedTimer: some View {
         let diameter = EdgeDock.diameter
-        return ZStack {
-            Circle().fill(Color.black)
+        let faceAlign: Alignment = edge.side == .left ? .trailing : .leading
+        return ZStack(alignment: faceAlign) {
+            Capsule().fill(Color.black)
+            Capsule()
+                .stroke(journeyBright.opacity(0.35), lineWidth: 4)
+                .padding(5)
             Circle()
                 .trim(from: 0, to: model.remainingRatio)
-                .stroke(journeyBright,
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .stroke(journeyBright, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .padding(5)
+                .frame(width: diameter, height: diameter)
             Text(countdownLabel)
                 .font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit())
                 .foregroundStyle(.white)
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
+                .frame(width: diameter, height: diameter)
         }
-        .frame(width: diameter, height: diameter)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: EdgeDock.parkedSize.width, height: EdgeDock.parkedSize.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity,
+               alignment: edge.side == .left ? .leading : .trailing)
     }
 
     private var glassHighlight: some View {
