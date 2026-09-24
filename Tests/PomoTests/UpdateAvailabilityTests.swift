@@ -18,4 +18,8 @@ final class UpdateAvailabilityTests: XCTestCase {
     func test_showsWhenRevisionsDiffer() {
         XCTAssertTrue(updateIsAvailable(installed: "aaa", remote: "bbb"))
     }
+
+    func test_updateCheckInterval_isOneHour() {
+        XCTAssertEqual(UpdateCheck.interval, 60 * 60)
+    }
 }

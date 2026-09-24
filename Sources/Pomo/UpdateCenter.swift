@@ -10,6 +10,11 @@ func updateIsAvailable(installed: String?, remote: String?) -> Bool {
     return installed != remote
 }
 
+enum UpdateCheck {
+    /// While the app stays open. Launch still checks immediately.
+    static let interval: TimeInterval = 60 * 60
+}
+
 private func normalizedRevision(_ raw: String?) -> String? {
     guard let raw else { return nil }
     let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,8 +134,24 @@ final class UpdateCenter: ObservableObject {
 
     @Published private(set) var isAvailable = false
     @Published private(set) var isInstalling = false
+    private var pollTimer: Timer?
+
+    /// One check now, then again every `UpdateCheck.interval` until quit.
+    func start() {
+        check()
+        guard pollTimer == nil else { return }
+        let timer = Timer(timeInterval: UpdateCheck.interval, repeats: true) { _ in
+            MainActor.assumeIsolated {
+                UpdateCenter.shared.check()
+            }
+        }
+        timer.tolerance = 5 * 60
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
+    }
 
     func check() {
+        guard !isInstalling else { return }
         let installed = UpdateGit.readInstalledCommit()
         let repo = UpdateGit.repoURL
         Task.detached {

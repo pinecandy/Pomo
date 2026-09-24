@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         TimerRegistry.shared.persistStructure()
-        UpdateCenter.shared.check()
+        UpdateCenter.shared.start()
     }
 
     private func wireAppLevelMenuActions(_ controller: TimerInstanceController) {
