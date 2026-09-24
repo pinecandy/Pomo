@@ -21,6 +21,7 @@ final class TimerInstanceController {
     private(set) var isPinned: Bool
 
     let hoverState = PomoHoverState()
+    let edge = EdgePresentation()
     private var effectView: NSVisualEffectView?
     private var hoverCancellable: AnyCancellable?
     private var idleTransitionCancellable: AnyCancellable?
@@ -84,6 +85,7 @@ final class TimerInstanceController {
         installHostingView(in: container)
         wireMenuCallbacks()
         installObservers()
+        restoreDockIfNeeded()
 
         Self.debugLogLevel(index: index, isPinned: isPinned, level: window.level)
     }
@@ -228,7 +230,7 @@ final class TimerInstanceController {
     }
 
     private func installHostingView(in container: NSView) {
-        let contentView = PomoView(hoverState: hoverState).environmentObject(source)
+        let contentView = PomoView(hoverState: hoverState, edge: edge).environmentObject(source)
         let hosting = NSHostingView(rootView: contentView)
         hosting.frame = container.bounds
         hosting.autoresizingMask = [.width, .height]
@@ -278,7 +280,7 @@ final class TimerInstanceController {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self = self else { return }
-                self.persistOrigin(self.window.frame.origin)
+                self.handleMove()
             }
         }
 
@@ -309,6 +311,89 @@ final class TimerInstanceController {
     }
 
     /// The one place this window's origin is written to UserDefaults.
+    private var adjustingFrame = false
+
+    private func handleMove() {
+        guard !adjustingFrame else { return }
+        persistOrigin(window.frame.origin)
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        let side = EdgeDock.side(frame: window.frame, screen: screen.frame)
+        let dragging = NSEvent.pressedMouseButtons & 1 != 0
+        if dragging {
+            if edge.style == .parked {
+                if side == nil { restorePill() }
+                return
+            }
+            edge.style = side == nil ? nil : .approaching
+            effectView?.isHidden = side != nil
+            return
+        }
+        if let side {
+            park(side, on: screen)
+        } else if edge.style != nil {
+            restorePill()
+        }
+    }
+
+    private func park(_ side: ScreenEdgeSide, on screen: NSScreen) {
+        let diameter = currentLayout().glassH
+        let frame = EdgeDock.parkedFrame(
+            side: side,
+            diameter: diameter,
+            anchorMidY: window.frame.midY,
+            screen: screen.frame,
+            visible: screen.visibleFrame
+        )
+        adjustingFrame = true
+        window.setFrame(frame, display: true, animate: false)
+        adjustingFrame = false
+        edge.style = .parked
+        effectView?.isHidden = true
+        let defaults = UserDefaults.standard
+        defaults.set(side == .left ? "left" : "right", forKey: TimerDefaultsKey.field(index, "dock"))
+        defaults.set(Double(frame.midY), forKey: TimerDefaultsKey.field(index, "dockMidY"))
+        persistOrigin(frame.origin)
+    }
+
+    private func restorePill() {
+        edge.style = nil
+        effectView?.isHidden = false
+        let layout = currentLayout()
+        let size = layout.windowSize
+        let mid = CGPoint(x: window.frame.midX, y: window.frame.midY)
+        var rect = NSRect(x: mid.x - size.width / 2, y: mid.y - size.height / 2,
+                          width: size.width, height: size.height)
+        if let screen = window.screen ?? NSScreen.main {
+            rect = Self.clamp(rect, into: screen.visibleFrame)
+        }
+        adjustingFrame = true
+        window.setFrame(rect, display: true, animate: false)
+        adjustingFrame = false
+        if let effectView {
+            effectView.frame = layout.centeredGlassRect(in: NSRect(origin: .zero, size: size))
+            effectView.maskImage = CapsuleMask.image(size: effectView.frame.size)
+        }
+        UserDefaults.standard.removeObject(forKey: TimerDefaultsKey.field(index, "dock"))
+        persistOrigin(rect.origin)
+    }
+
+    private func restoreDockIfNeeded() {
+        let raw = UserDefaults.standard.string(forKey: TimerDefaultsKey.field(index, "dock"))
+        let side: ScreenEdgeSide?
+        switch raw {
+        case "left": side = .left
+        case "right": side = .right
+        default: side = nil
+        }
+        guard let side, let screen = window.screen ?? NSScreen.main else { return }
+        let midY = UserDefaults.standard.double(forKey: TimerDefaultsKey.field(index, "dockMidY"))
+        if midY > 0 {
+            let originY = midY - window.frame.height / 2
+            window.setFrameOrigin(NSPoint(x: window.frame.origin.x, y: originY))
+        }
+        park(side, on: screen)
+    }
+
     private func persistOrigin(_ origin: NSPoint) {
         let d = UserDefaults.standard
         d.set(Double(origin.x), forKey: TimerDefaultsKey.field(index, "x"))
@@ -330,6 +415,7 @@ final class TimerInstanceController {
     /// preserved across a resize, so the pill grows leftward/downward rather
     /// than drifting.
     private func applyWindowSize(animate: Bool) {
+        if edge.style == .parked { return }
         let layout = currentLayout()
         let winSize = layout.windowSize
         let oldFrame = window.frame
