@@ -142,6 +142,7 @@ struct PomoView: View {
     /// call sites that don't care (the POMO_RENDER_PNG offscreen harness)
     /// still compile.
     @ObservedObject var hoverState: PomoHoverState = PomoHoverState()
+    @ObservedObject var edge: EdgePresentation = EdgePresentation()
     @ObservedObject var updateCenter = UpdateCenter.shared
     // Hover drives the CONTENTS: the pill expands slightly. The outer look
     // (edge, glass darkness) is fixed so no grey rim ever appears.
@@ -214,7 +215,11 @@ struct PomoView: View {
     var body: some View {
         ZStack {
             Color.clear
-            pill
+            if edge.style == nil {
+                pill
+            } else {
+                edgeSphere
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Drive the whole-pill resize from SwiftUI (the window's own setFrame
@@ -284,9 +289,26 @@ struct PomoView: View {
             .animation(Motion.overtime, value: model.overtimeSeconds)
     }
 
-    /// Specular reflection on the glass edge that faces the pointer. Resting
-    /// position is the top edge. This is light on the existing glass, not
-    /// another glass body or a full perimeter stroke.
+    /// Black sphere. The screen bezel clips it, so the visible cap reads as
+    /// attached to the edge. The ring is the remaining-time circle.
+    private var edgeSphere: some View {
+        let diameter = edge.style == .parked ? min(glassW, glassH) : glassH
+        let ratio = model.remainingRatio
+        return ZStack {
+            Circle().fill(Color.black)
+            Circle()
+                .trim(from: 0, to: ratio)
+                .stroke(model.isOvertime ? Color.orange : Color.white,
+                        style: StrokeStyle(lineWidth: diameter * 0.08, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .padding(diameter * 0.16)
+        }
+        .frame(width: edge.style == .parked ? nil : diameter,
+               height: edge.style == .parked ? nil : diameter)
+        .frame(maxWidth: edge.style == .parked ? .infinity : nil,
+               maxHeight: edge.style == .parked ? .infinity : nil)
+    }
+
     private var glassHighlight: some View {
         GlassHighlight(cornerRadius: cornerRadius, width: glassW, height: glassH)
     }
