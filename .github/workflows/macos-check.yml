@@ -1,0 +1,17 @@
+name: macos-check
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --filter EdgeDockTests
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glass-align
+          path: artifacts/*.png
