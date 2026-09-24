@@ -58,6 +58,23 @@ final class PomoViewMotionTests: XCTestCase {
         XCTAssertEqual(offsets, TaskSlotOffsets(display: -24, editor: 0))
     }
 
+    func test_updateSpin_staysStillUntilTheUpdateStarts() {
+        let now = Date(timeIntervalSinceReferenceDate: 10)
+        XCTAssertEqual(UpdateSpin.degrees(now: now, started: nil, active: false), 0)
+        XCTAssertEqual(UpdateSpin.degrees(now: now, started: now, active: false), 0)
+    }
+
+    func test_updateSpin_turnsOncePerPeriodWhileInstalling() {
+        let start = Date(timeIntervalSinceReferenceDate: 0)
+        let quarter = Date(timeIntervalSinceReferenceDate: UpdateSpin.period / 4)
+        let lap = Date(timeIntervalSinceReferenceDate: UpdateSpin.period)
+        let extra = Date(timeIntervalSinceReferenceDate: UpdateSpin.period * 2.5)
+
+        XCTAssertEqual(UpdateSpin.degrees(now: quarter, started: start, active: true), 90, accuracy: 1e-9)
+        XCTAssertEqual(UpdateSpin.degrees(now: lap, started: start, active: true), 0, accuracy: 1e-9)
+        XCTAssertEqual(UpdateSpin.degrees(now: extra, started: start, active: true), 180, accuracy: 1e-9)
+    }
+
     func test_taskSlotOffsets_withReduceMotion_usesNoVerticalMovement() {
         let idle = TaskSlotOffsets.resolve(isEditing: false, distance: 24, reduceMotion: true)
         let editing = TaskSlotOffsets.resolve(isEditing: true, distance: 24, reduceMotion: true)

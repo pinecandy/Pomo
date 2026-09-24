@@ -61,6 +61,18 @@ struct HoverScaleFactors: Equatable {
     }
 }
 
+/// One full turn of the update glyph while an install is in progress.
+struct UpdateSpin {
+    static let period: TimeInterval = 0.8
+
+    static func degrees(now: Date, started: Date?, active: Bool) -> Double {
+        guard active, let started else { return 0 }
+        let elapsed = now.timeIntervalSince(started)
+        guard elapsed > 0 else { return 0 }
+        return elapsed.truncatingRemainder(dividingBy: period) / period * 360
+    }
+}
+
 struct HoverHitRegion: Equatable {
     let size: CGSize
     let cornerRadius: CGFloat
@@ -153,6 +165,7 @@ struct PomoView: View {
     @State private var pressedButton: ControlButton?
     @State private var draftWorkMinutes = ""
     @State private var minuteInputInvalid = false
+    @State private var updateSpinAnchor: Date?
     @FocusState private var setupField: SetupField?
 
     private enum SetupField: Hashable {
@@ -497,12 +510,24 @@ struct PomoView: View {
     @ViewBuilder
     private var updateSlot: some View {
         if layout.showsUpdateSlot {
-            controlButton(.update, symbol: "arrow.triangle.2.circlepath", label: "更新") {
-                updateCenter.install()
+            let installing = updateCenter.isInstalling
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0,
+                                    paused: !installing || reduceMotion)) { context in
+                controlButton(.update,
+                              symbol: "arrow.triangle.2.circlepath",
+                              label: installing ? "更新中" : "更新") {
+                    updateCenter.install()
+                }
+                .rotationEffect(.degrees(UpdateSpin.degrees(
+                    now: context.date,
+                    started: updateSpinAnchor,
+                    active: installing && !reduceMotion)))
+                .padding(.leading, layout.spacing.gapControls)
+                .allowsHitTesting(!installing)
             }
-            .padding(.leading, layout.spacing.gapControls)
-            .opacity(updateCenter.isInstalling ? 0.45 : 1)
-            .allowsHitTesting(!updateCenter.isInstalling)
+            .onChange(of: installing) { isInstalling in
+                updateSpinAnchor = isInstalling ? Date() : nil
+            }
         }
     }
 
